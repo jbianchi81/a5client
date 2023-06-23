@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a5client"
+version = "0.1"
+description = "a5 api client for python"
+authors = [
+    { name = "SSIyAH-INA", email = "jbianchi@ina.gob.ar" },
+]
+license = { file = "LICENCE" }
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "jsonschema",
+    "requests",
+    "datetime",
+    "pyyaml"
+]
+
+[project.urls]
+"Homepage" = "http://github.com/jbianchi81/a5client"
+
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["a5client*"]
