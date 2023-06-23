@@ -7,6 +7,7 @@
     $ python3 -m venv .
     $ source bin/activate
     $ python3 -m pip install .
+    $ python3 create_dirs.py
 
 ## Use
 
