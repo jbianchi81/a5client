@@ -8,14 +8,17 @@ import logging
 import dateutil
 import pytz
 
-import a5client.config as config
+import src.a5client.config as config
 
-logging.basicConfig(filename= config.logfile, level=logging.DEBUG, format="%(asctime)s:%(levelname)s:%(message)s")
-logging.FileHandler(config.logfile,"w+")
+logfile = "%s/../../log/a5client.log" % os.path.dirname(__file__)
+datadir = "%s/../../data" % os.path.dirname(__file__)
+
+logging.basicConfig(filename= logfile, level=logging.DEBUG, format="%(asctime)s:%(levelname)s:%(message)s")
+logging.FileHandler(logfile,"w+")
 
 from a5client.schemas import schemas
 
-serie_schema = open("%s/schemas/yaml/serie.yml" % config.datadir)
+serie_schema = open("%s/schemas/yaml/serie.yml" % datadir)
 serie_schema = yaml.load(serie_schema,yaml.CLoader)
 
 def validate(instance,classname):
