@@ -5,7 +5,3 @@ proxy_dict = {
     "https": None,
     "ftp": None
 }
-import os
-appdir = "%s/.a5client" % os.environ["HOME"]
-datadir = "%s/data" % appdir
-logfile = "%s/a5client.log" % appdir
