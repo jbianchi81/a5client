@@ -5,3 +5,6 @@ proxy_dict = {
     "https": None,
     "ftp": None
 }
+log = {
+    "filename": "log.txt"
+}
