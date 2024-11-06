@@ -7,15 +7,15 @@ from a5_client_utils.types import SeriesPronoDict, CorridaDict
 import json
 import os
 from datetime import datetime, timedelta
-import yaml
+# import yaml
 import logging
 from .config import log as log_config
-from typing import List, Union
+from typing import List, Union, Literal
 import os
+from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
 
 logging.basicConfig(
     filename = os.path.join(
-        os.environ["PYDRODELTA_DIR"],
         log_config["filename"]
     ),
     level=logging.DEBUG, 
@@ -23,7 +23,6 @@ logging.basicConfig(
 )
 logging.FileHandler(
     os.path.join(
-        os.environ["PYDRODELTA_DIR"],
         log_config["filename"]
     ),
     "w+"
@@ -342,6 +341,47 @@ class Crud():
         json_response = response.json()
         return json_response
 
+    def createSites(
+        self,
+        data : Union[List[Area], List[Estacion], List[Escena], GeoJSON],
+        tipo : Literal["estaciones","areas","escenas"],
+        format : Literal["json","geojson"],
+        use_proxy : bool = False
+    ) -> list:
+        """Create or updates stations, areas or scenes
+
+        If format=geojson, data must be a geojson dict 
+        
+        Raises:
+            Exception: Request failed if response status code is not 200
+
+        Returns:
+            dict: create/updated stations list"""
+        if format.lower() == "geojson":
+            data = geojsonToList(data)
+        if tipo == "estaciones":
+            [validate(x,"Estacion") for x in data]
+            url = "%s/obs/puntual/estaciones" % (self.url)
+        elif tipo == "areas":
+            [validate(x,"Area") for x in data]
+            url = "%s/obs/areal/areas" % (self.url)
+        else:
+            [validate(x,"Escena") for x in data]
+            url = "%s/obs/raster/escenas" % (self.url)
+        body = {}
+        body[tipo] = data
+        logging.debug("body head: %s" % json.dumps(body)[:200])
+        response = requests.post(
+            url, 
+            json = body, 
+            headers = self.request_headers,
+            proxies = self.proxy_dict if use_proxy else None
+        )
+        if response.status_code != 200:
+            raise Exception("request failed: %s" % response.text)
+        json_response = response.json()
+        return json_response
+
     def readSerie(
         self,
         series_id : int,
@@ -387,6 +427,7 @@ class Crud():
             self,
             data : list,
             # column : str= "valor",
+            update_obs : bool,
             tipo : str = "puntual", 
             # timeSupport : timedelta = None,
             use_proxy : bool = False    
@@ -400,9 +441,15 @@ class Crud():
             list: list of created observations"""
         [validate(x,"Serie") for x in data]
         url = "%s/obs/%s/series" % (self.url, tipo)
-        response = requests.post(url, json = {
+        response = requests.post(
+            url,
+            json = {
                 "series": data
-            }, headers = self.request_headers,
+            },
+            params = {
+                "update_obs": update_obs
+            },
+            headers = self.request_headers,
             proxies = self.proxy_dict if use_proxy else None
         )
         if response.status_code != 200:
@@ -902,6 +949,35 @@ def getSeriesTipo(series_table : str = None) -> str:
         return "rast"
     else:
         return "puntual"
+
+def featureToSitio(
+        feature : Feature
+    ) -> Sitio:
+    if "properties" not in feature:
+        raise ValueError("Invalid GeoJSON: missing properties")
+    if "geometry" not in feature:
+        raise ValueError("Invalid GeoJSON: missing geomerty")
+    sitio = {
+        **feature["properties"], 
+        "geom": feature["geometry"]
+    }
+    return sitio
+
+def geojsonToList(
+        data : GeoJSON
+    ) -> List[Sitio]:
+    if "type" not in data:
+        raise ValueError("Invalid GeoJSON: missing type")
+    if data["type"] == "Feature":
+        return [
+            featureToSitio(data)
+        ]
+    else:
+        if "features" not in data:
+            raise ValueError("Invalid GeoJSON: missing features")
+        return [
+            featureToSitio(feature) for feature in data["features"]
+        ]
 
 ## EJEMPLO
 '''
