@@ -12,7 +12,7 @@
 ## Use
 
     $ python3
-    >>> import a5client.a5 as a5
-    >>> client = a5.Crud({"url": "A5_API_ENDPOINT_URL", "token": "YOUR_PERSONAL_TOKEN"})
+    >>> from a5client import Crud
+    >>> client = Crud({"url": "A5_API_ENDPOINT_URL", "token": "YOUR_PERSONAL_TOKEN"})
     >>> series = client.readSeries(var_id=2)
     >>> data = client.readSerie(29, "2020-01-01T03:00:00.000Z", "2021-01-01T03:00:00.000Z")
