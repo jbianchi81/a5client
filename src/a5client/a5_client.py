@@ -9,7 +9,8 @@ import os
 from datetime import datetime, timedelta
 # import yaml
 import logging
-from .config import log as log_config
+from .config import config
+log_config = config["log"]
 from typing import List, Union, Literal
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
@@ -427,18 +428,36 @@ class Crud():
             self,
             data : list,
             # column : str= "valor",
-            update_obs : bool,
+            update_obs : bool = True,
             tipo : str = "puntual", 
             # timeSupport : timedelta = None,
-            use_proxy : bool = False    
+            use_proxy : bool = False,
+            series_metadata : bool = False
     ) -> list:
         """create or update series
         
+        Parameters:
+
+            data : list
+                List of series to create
+            
+            update_obs : bool = True
+                insert/update observations contained in the series items 
+            
+            tipo : str = "puntual"
+                series type ("puntual","areal","raster")
+            
+            use_proxy : bool = False    
+                Use proxy settings
+            
+            series_metadata : bool = False
+                Attempt to create metadata elements (estacion, variable, procedimiento, unidades, fuente) if missing in database
+
         Raises:
             Exception: Request failed if response status code is not 200
 
         Returns:
-            list: list of created observations"""
+            list: list of created series"""
         [validate(x,"Serie") for x in data]
         url = "%s/obs/%s/series" % (self.url, tipo)
         response = requests.post(
@@ -447,7 +466,8 @@ class Crud():
                 "series": data
             },
             params = {
-                "update_obs": update_obs
+                "update_obs": update_obs,
+                "series_metadata": series_metadata
             },
             headers = self.request_headers,
             proxies = self.proxy_dict if use_proxy else None

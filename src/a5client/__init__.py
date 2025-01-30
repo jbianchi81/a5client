@@ -1,3 +1,3 @@
-from .a5_client import Serie, Observacion, Crud
+from .a5_client import Serie, Observacion, Crud, observacionesListToDataFrame, createEmptyObsDataFrame
 
-__all__ = ['Serie','Observacion','Crud']
+__all__ = ['Serie','Observacion','Crud', 'observacionesListToDataFrame', 'createEmptyObsDataFrame']
