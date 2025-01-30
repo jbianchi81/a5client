@@ -3,8 +3,8 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "a5client"
-version = "0.1.5"
+name = "a5_client"
+version = "0.1.6"
 description = "a5 api client for python"
 authors = [
     { name = "SSIyAH-INA", email = "jbianchi@ina.gob.ar" },
@@ -31,6 +31,7 @@ dependencies = [
 
 [tool.setuptools]
 include-package-data = true
+license-files = []
 
 [tool.setuptools.packages.find]
 where = ["src"]
