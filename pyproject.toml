@@ -22,7 +22,8 @@ dependencies = [
     "jsonschema",
     "requests",
     "datetime",
-    "pyyaml"
+    "pyyaml",
+    "a5_client_utils"
 ]
 
 [project.urls]
