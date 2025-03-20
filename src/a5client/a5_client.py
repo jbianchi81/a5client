@@ -826,6 +826,8 @@ class Crud():
             group_by_qualifier = True,
             tipo = tipo)
         # logging.debug('Cantidad total de corridas: ',len(corridas))
+        if not len(corridas):
+            raise FileNotFoundError("No forecast runs where found")
         qualifiers = {}
         last_forecast_date = corridas[len(corridas)-1]["forecast_date"]
         for corrida in sorted(corridas, key = lambda c: c["forecast_date"]):
