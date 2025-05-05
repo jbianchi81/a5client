@@ -813,9 +813,10 @@ class Crud():
         qualifier : str = None,
         forecast_timestart : datetime = None,
         forecast_timeend : datetime = None,
-        tipo : str = None
+        tipo : str = None,
+        group_by_qualifier : bool = False
         ) -> SeriesPronoDict:
-        """Retrieves history of forecast runs and concatenates into a single series (newer runs overwrite older runs). If qualifier is not set and multiple qualifiers exist, a mixed qualifier series is returned"""
+        """Retrieves history of forecast runs and concatenates into a single series (newer runs overwrite older runs). If qualifier is not set and multiple qualifiers exist, a mixed qualifier series is returned unless group_by_qualifier is set to True"""
         corridas = self.readCorridas(
             cal_id,
             series_id = series_id,
@@ -826,9 +827,9 @@ class Crud():
             group_by_qualifier = True,
             tipo = tipo)
         # logging.debug('Cantidad total de corridas: ',len(corridas))
-        if not len(corridas):
-            raise FileNotFoundError("No forecast runs where found")
         qualifiers = {}
+        if not len(corridas):
+            raise FileNotFoundError("Runs not found for the specified filters")
         last_forecast_date = corridas[len(corridas)-1]["forecast_date"]
         for corrida in sorted(corridas, key = lambda c: c["forecast_date"]):
             last_forecast_date = corrida["forecast_date"]
@@ -845,6 +846,17 @@ class Crud():
                     }
                     qualifiers[qualifier][ts] = prono
         pronosticos = []
+        if group_by_qualifier:
+            return {
+                "cal_id": cal_id,
+                "series_id": series_id,
+                "tipo": tipo,
+                "qualifier": qualifier,
+                "forecast_timestart": forecast_timestart,
+                "forecast_timeend": forecast_timeend,
+                "pronosticos": [ {"qualifier": q, "pronosticos": [ obs for ts, obs in serie.items()]} for q, serie in qualifiers.items() ],
+                "forecast_date": last_forecast_date
+            }    
         for qualifier, pronos in qualifiers.items():
             for timestart, prono in pronos.items():
                 pronosticos.append({

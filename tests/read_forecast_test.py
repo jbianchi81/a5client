@@ -15,11 +15,23 @@ class TestReadForecasts(TestCase):
             forecast_timeend = datetime(1901,1,1) 
         )
 
+    def test_series_found(self):
+        client = Crud("https://alerta.ina.gob.ar/a5","my_token")
+        serie = client.readSeriePronoConcat(
+            cal_id = 289,
+            series_id = 3526,
+            tipo = "puntual",
+            forecast_timestart = datetime.now() - timedelta(days=10),
+            forecast_timeend = datetime.now() 
+        )
+        self.assertTrue(len(serie["pronosticos"]))
+
+
     def test_series_not_found(self):
         client = Crud("https://alerta.ina.gob.ar/a5","my_token")
         serie = client.readSeriePronoConcat(
-            cal_id = 489,
-            series_id = 3456729586,
+            cal_id = 289,
+            series_id = 549846357,
             tipo = "puntual",
             forecast_timestart = datetime.now() - timedelta(days=10),
             forecast_timeend = datetime.now() 
