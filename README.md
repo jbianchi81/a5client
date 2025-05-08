@@ -1,5 +1,5 @@
 # a5 api client library
-This is a Python client library to work against a [alerta5DBIO API](github.com/jbianchi81/alerta5DBIO.git) instance developed by [Instituto Nacional del Agua](www.ina.gob.ar), such as the one deployed [here](https://alerta.ina.gob.ar/a5).
+This is a Python client library to work against a [alerta5DBIO API](https://github.com/jbianchi81/alerta5DBIO.git) instance developed by [Instituto Nacional del Agua](https://www.ina.gob.ar), such as the one deployed [here](https://alerta.ina.gob.ar/a5).
 ## Install
 ```bash
 python3 -m venv .
