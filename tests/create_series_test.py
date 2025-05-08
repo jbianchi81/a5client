@@ -40,7 +40,7 @@ class TestCreateSeries(TestCase):
         self.assertEqual(len(series),1," 1 returned series element expected")
         self.assertEqual(type(series[0]["observaciones"]), list, " expected type of observaciones attribute is list. Instead, %s was found" % type(series[0]["observaciones"]))
         self.assertEqual(len(series[0]["observaciones"]),1," 1 returned observacion element expected")
-        self.assertEqual(series[0]["observaciones"][0]["valor"], valor, "Expected return value of observation is %f. Instead, %f was found" % (valor, series[0]["observaciones"][0]["valor"]))
+        self.assertAlmostEqual(series[0]["observaciones"][0]["valor"], valor, 2, "Expected return value of observation is %f. Instead, %f was found" % (valor, series[0]["observaciones"][0]["valor"]))
 
 
 

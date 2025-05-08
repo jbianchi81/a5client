@@ -381,6 +381,8 @@ class Crud():
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
         json_response = response.json()
+        if not len(json_response):
+            raise Exception("Nothing created")
         return json_response
 
     def readSerie(
@@ -640,7 +642,11 @@ class Crud():
         Returns:
             dict : a forecast run 
         """
-        params = {}
+        params = {
+            "series_id": series_id,
+            "tipo": tipo,
+            "group_by_qualifier": True
+        }
         if forecast_date is not None:
             corridas_response = requests.get("%s/sim/calibrados/%i/corridas" % (self.url, cal_id),
                 params = {
@@ -686,13 +692,8 @@ class Crud():
                     "pronosticos": []
                 }
         if timestart is not None and timeend is not None:
-            params = {
-                "timestart": timestart if isinstance(timestart,str) else timestart.isoformat(),
-                "timeend": timeend if isinstance(timestart,str) else timeend.isoformat(),
-                "series_id": series_id,
-                "tipo": tipo,
-                "group_by_qualifier": True
-            }
+            params["timestart"] = timestart if isinstance(timestart,str) else timestart.isoformat()
+            params["timeend"] = timeend if isinstance(timestart,str) else timeend.isoformat()
         if qualifier is not None and qualifier != 'all':
             params["qualifier"] = qualifier
         params["includeProno"] = True
@@ -709,7 +710,7 @@ class Crud():
             raise Exception("request failed: %s" % response.text)
         json_response = response.json()
         if "series" not in json_response:
-            logging.warn("Series %i from cal_id %i not found" % (series_id,cal_id))
+            logging.warning("Series %i from cal_id %i not found" % (series_id,cal_id))
             return {
                 "forecast_date": json_response["forecast_date"],
                 "cal_id": json_response["cal_id"],
