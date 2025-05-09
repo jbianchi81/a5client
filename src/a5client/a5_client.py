@@ -606,8 +606,8 @@ class Crud():
 
     def readSerieProno(
         self,
-        series_id : int,
-        cal_id : int,
+        series_id : int = None,
+        cal_id : int = None,
         timestart : datetime = None,
         timeend : datetime = None,
         use_proxy : bool = False,
@@ -615,12 +615,15 @@ class Crud():
         forecast_date : datetime = None,
         qualifier : str = None,
         forecast_timestart : datetime = None,
-        tipo : str = None
+        tipo : str = None,
+        estacion_id : int = None,
+        var_id : int = None
         ) -> dict:
         """
         Reads prono serie from a5 API
         if forecast_date is not None, cor_id is overwritten by first corridas match
         returns Corridas object { series_id: int, cor_id: int, forecast_date: str, pronosticos: [{timestart:str,valor:float},...]}
+        If series_id is not set, estacion_id and var_id must be set
 
         Args:
             series_id (int): series identifier
@@ -634,6 +637,8 @@ class Crud():
             - qualifier : str
             - pronosticos : list of time-value pairs
             tipo (str, optional): series geometry type: puntual (default), areal, rast
+            estacion_id (int): station identifier
+            var_id (int): variable (observed property) identifier
             
 
         Raises:
@@ -642,10 +647,16 @@ class Crud():
         Returns:
             dict : a forecast run 
         """
+        if cal_id is None:
+            raise ValueError("cal_id must be set")
+        if series_id is None and (estacion_id is None or var_id is None):
+            raise ValueError("If series_id is not set, estacion_id and var_id must be set")
         params = {
             "series_id": series_id,
             "tipo": tipo,
-            "group_by_qualifier": True
+            "group_by_qualifier": True,
+            "var_id": var_id,
+            "estacion_id": estacion_id
         }
         if forecast_date is not None:
             corridas_response = requests.get("%s/sim/calibrados/%i/corridas" % (self.url, cal_id),
@@ -874,7 +885,10 @@ class Crud():
             "pronosticos": pronosticos,
             "forecast_date": last_forecast_date
         }
-    
+
+## Default client
+
+client = Crud(config["server"]["url"], config["server"]["token"])
 
 ## AUX functions
 

@@ -1,20 +1,26 @@
 # a5 api client library
 This is a Python client library to work against a [alerta5DBIO API](https://github.com/jbianchi81/alerta5DBIO.git) instance developed by [Instituto Nacional del Agua](https://www.ina.gob.ar), such as the one deployed [here](https://alerta.ina.gob.ar/a5).
-## Install
+## Installation
 ```bash
+# set environment
 python3 -m venv .
 source bin/activate
+## Install from pip
 pip install a5-client
-# start log file
-LOGFILENAME=/var/log/a5client.log
-sudo touch $LOGFILENAME
-sudo chown $USER:$USER $LOGFILENAME
-# set config file
-cat >~/.a5client.ini <<EOL
-[log]
-filename=$LOGFILENAME
-EOL
+## Or clone git repo
+clone https://github.com/jbianchi81/a5client.git
+cd a5client
+pip install .
 ```
+#### Config file location
+- **Linux**: $HOME/.a5client.ini
+- **Windows**: %USERPROFILE%/.a5client.ini 
+- **MacOS**: $HOME/.a5client.ini
+#### Default log file location (may be changed in config file)
+- **Linux**: $HOME/.local/share/a5client/logs/a5client.log
+- **Windows**: %LOCALAPPDATA%/a5client/logs/a5client.log
+- **MacOS**: $HOME/Library/Logs/a5client/a5client.log
+
 ## Use
 ```python
 from datetime import datetime, timedelta

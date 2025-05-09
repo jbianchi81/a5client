@@ -12,16 +12,17 @@ class TestCreateSeries(TestCase):
             [
                 {
                     "id": 3,
-                    "estacion": {
-                        "id": 1018,
-                        "nombre": "test",
-                        "geom": {
-                            "type": "Point",
-                            "coordinates": [-1, 1]
-                        },
-                        "tabla": "estaciones_virtuales",
-                        "id_externo": "1"
-                    },
+                    "estacion_id": 1018, 
+                    # "estacion": {
+                    #     "id": 1018,
+                    #     "nombre": "test",
+                    #     "geom": {
+                    #         "type": "Point",
+                    #         "coordinates": [-1, 1]
+                    #     },
+                    #     "tabla": "estaciones_virtuales",
+                    #     "id_externo": "1"
+                    # },
                     "var_id": 2,
                     "proc_id": 1,
                     "unit_id": 11,
@@ -35,7 +36,7 @@ class TestCreateSeries(TestCase):
                 }
             ],
             tipo = "puntual",
-            series_metadata = True)
+            series_metadata = False)
         self.assertTrue(isinstance(series, list), "list return type expected")
         self.assertEqual(len(series),1," 1 returned series element expected")
         self.assertEqual(type(series[0]["observaciones"]), list, " expected type of observaciones attribute is list. Instead, %s was found" % type(series[0]["observaciones"]))

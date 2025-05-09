@@ -12,3 +12,4 @@ src/a5client/__pycache__
 tests/__pycache__
 dist
 .vscode
+share

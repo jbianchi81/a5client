@@ -82,7 +82,6 @@ class TestReadForecasts(TestCase):
     def test_returned_ids(self):
         cal_id = 289
         series_id = 3526
-        client = Crud("https://alerta.ina.gob.ar/a5","my_token")
         serie = self.client.readSerieProno(
             cal_id = cal_id,
             series_id = series_id 
@@ -94,7 +93,6 @@ class TestReadForecasts(TestCase):
     def test_returned_qualifier(self):
         cal_id = 289
         series_id = 3526
-        client = Crud("https://alerta.ina.gob.ar/a5","my_token")
         serie_superior = self.client.readSerieProno(
             cal_id = cal_id,
             series_id = series_id,
@@ -116,7 +114,20 @@ class TestReadForecasts(TestCase):
         self.assertGreaterEqual(serie_superior["pronosticos"][0]["valor"], serie_inferior["pronosticos"][0]["valor"])
         for i in range(1,3):
             self.assertGreater(serie_superior["pronosticos"][i]["valor"], serie_inferior["pronosticos"][i]["valor"])
-        
+
+    def test_estacion_var_ids(self):
+        cal_id = 289
+        series_id = 3526
+        estacion_id = 24
+        var_id = 2
+        serie = self.client.readSerieProno(
+            cal_id = cal_id,
+            estacion_id = estacion_id,
+            var_id = var_id
+        )
+        self.assertEqual(serie["cal_id"], cal_id)
+        self.assertEqual(serie["series_id"], series_id)
+        self.assertTrue(len(serie["pronosticos"]))    
 
 
 if __name__ == '__main__':
