@@ -299,6 +299,7 @@ class Crud():
         params = locals()
         del params["use_proxy"]
         del params["tipo"]
+        del params["self"]
         response = requests.get("%s/obs/%s/series" % (self.url, tipo),
             params = params,
             headers = self.request_headers,
