@@ -618,7 +618,8 @@ class Crud():
         forecast_timestart : datetime = None,
         tipo : str = None,
         estacion_id : int = None,
-        var_id : int = None
+        var_id : int = None,
+        archived : bool = False
         ) -> dict:
         """
         Reads prono serie from a5 API
@@ -640,6 +641,7 @@ class Crud():
             tipo (str, optional): series geometry type: puntual (default), areal, rast
             estacion_id (int): station identifier
             var_id (int): variable (observed property) identifier
+            archived (bool): read archived forecasts, defaults to False
             
 
         Raises:
@@ -660,7 +662,7 @@ class Crud():
             "estacion_id": estacion_id
         }
         if forecast_date is not None:
-            corridas_response = requests.get("%s/sim/calibrados/%i/corridas" % (self.url, cal_id),
+            corridas_response = requests.get("%s/sim/calibrados/%i/%s" % (self.url, cal_id, "corridas guardadas" if archived else "corridas"),
                 params = {
                     "forecast_date": forecast_date if isinstance(forecast_date,str) else forecast_date.isoformat(),
                     "group_by_qualifier": True
@@ -680,7 +682,7 @@ class Crud():
                     "pronosticos": []
                 }
         elif forecast_timestart is not None:
-            corridas_response = requests.get("%s/sim/calibrados/%i/corridas" % (self.url, cal_id),
+            corridas_response = requests.get("%s/sim/calibrados/%i/%s" % (self.url, cal_id, "corridas_guardadas" if archived else "corridas"),
                 params = {
                     "series_id": series_id,
                     "tipo": tipo,
@@ -710,8 +712,10 @@ class Crud():
             params["qualifier"] = qualifier
         params["includeProno"] = True
         if cor_id is not None:
-            url = "%s/sim/calibrados/%i/corridas/%i" % (self.url, cal_id, cor_id)
+            url = "%s/sim/calibrados/%i/%s/%i" % (self.url, cal_id, "corridas_guardadas" if archived else "corridas", cor_id)
         else:
+            if archived:
+                raise ValueError("missing cor_id")
             url = "%s/sim/calibrados/%i/corridas/last" % (self.url, cal_id)
         response = requests.get(url,
             params = params,
@@ -721,6 +725,8 @@ class Crud():
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
         json_response = response.json()
+        if type(json_response) == list:
+            json_response = json_response[0]
         if "series" not in json_response:
             logging.warning("Series %i from cal_id %i not found" % (series_id,cal_id))
             return {
@@ -799,10 +805,11 @@ class Crud():
         qualifier : str = None,
         includeProno : bool = False,
         group_by_qualifier : bool = False,
-        tipo : str = None
+        tipo : str = None,
+        archived : bool = False
         ) -> List[CorridaDict]:
         response = requests.get(
-            "%s/sim/calibrados/%i/corridas" % (self.url, cal_id),
+            "%s/sim/calibrados/%i/%s" % (self.url, cal_id, "corridas_guardadas" if archived else "corridas"),
             params = {
                 'series_id': series_id,
                 'tipo': tipo,

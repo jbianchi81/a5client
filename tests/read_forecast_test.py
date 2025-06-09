@@ -6,6 +6,7 @@ import pytz
 class TestReadForecasts(TestCase):
 
     client = Crud("https://alerta.ina.gob.ar/a5","my_token")
+    # client = Crud("http://localhost:3005","my_token")
 
     ### readSeriePronoConcat
 
@@ -88,6 +89,21 @@ class TestReadForecasts(TestCase):
         )
         self.assertEqual(serie["cal_id"], cal_id)
         self.assertEqual(serie["series_id"], series_id)
+        self.assertTrue(len(serie["pronosticos"]))
+
+    def test_returned_ids_archived(self):
+        cal_id = 289
+        series_id = 1540
+        serie = self.client.readSerieProno(
+            cal_id = cal_id,
+            series_id = series_id,
+            cor_id = 761182,
+            archived=True,
+            qualifier="medio"
+        )
+        self.assertEqual(serie["cal_id"], cal_id)
+        self.assertEqual(serie["series_id"], series_id)
+        self.assertEqual(serie["qualifier"], "medio")
         self.assertTrue(len(serie["pronosticos"]))
 
     def test_returned_qualifier(self):
