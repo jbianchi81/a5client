@@ -923,7 +923,10 @@ def observacionesDataFrameToList(
     # data: dataframe con índice tipo datetime y valores en columna "column"
     # timeSupport: timedelta object
     if data.index.dtype.name != 'datetime64[ns, America/Argentina/Buenos_Aires]':
-        data.index = data.index.map(tryParseAndLocalizeDate)
+        if "timestart" in data.columns:
+            data.index = data["timestart"].map(tryParseAndLocalizeDate)
+        else:
+            data.index = data.index.map(tryParseAndLocalizeDate)
     # raise Exception("index must be of type datetime64[ns, America/Argentina/Buenos_Aires]'")
     if column not in data.columns:
         raise Exception("column %s not found in data" % column)

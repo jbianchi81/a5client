@@ -20,7 +20,14 @@ pip install .
 - **Linux**: $HOME/.local/share/a5client/logs/a5client.log
 - **Windows**: %LOCALAPPDATA%/a5client/logs/a5client.log
 - **MacOS**: $HOME/Library/Logs/a5client/a5client.log
-
+### Config file example
+```
+[log]
+  filename = /var/log/a5client.log
+[server]
+  url = http://localhost:3005
+  token = my.access.token
+```
 ## Use
 ```python
 from datetime import datetime, timedelta
