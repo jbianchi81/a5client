@@ -393,7 +393,8 @@ class Crud():
         timeend : datetime = None,
         tipo : str = "puntual",
         use_proxy : bool = False,
-        no_metadata : bool = False
+        no_metadata : bool = False,
+        include_partial_time_intersection : bool = False
         ) -> dict:
         """Retrieve serie
 
@@ -404,6 +405,7 @@ class Crud():
             tipo (str, optional): Geometry type: puntual, areal, raster. Defaults to "puntual".
             use_proxy (bool, optional): Perform request through proxy. Defaults to False.
             no_metadata (bool, optional): Don't retrieve metadata (only data and identifiers). Defaults to False
+            include_partial_overlap (bool, optional): Retrieve observations with partial time support overlap with requested period. Defaults to False
 
         Raises:
             Exception: Request failed if response status code is not 200
@@ -412,7 +414,8 @@ class Crud():
             dict: raw serie dict
         """
         params = {
-            "no_metadata": no_metadata
+            "no_metadata": no_metadata,
+            "include_partial_time_intersection": include_partial_time_intersection
         }
         if timestart is not None and timeend is not None:
             params["timestart"] = timestart if isinstance(timestart,str) else timestart.isoformat()
