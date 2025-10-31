@@ -310,6 +310,46 @@ class Crud():
         json_response = response.json()
         return json_response
 
+    def readAreas(
+            self,
+            area_id : int | List[int] | None=None,
+            unid : int | List[int] | None=None,
+            id : int | List[int] | None=None,
+            nombre : str | List[str] | None=None,
+            exutorio : str | None=None,
+            exutorio_id : int | List[int] | None=None,
+            geom : str | None=None,
+            tabla : str | None=None,
+            pagination : bool | None=None,
+            limit : int | None=None,
+            offset : int | None=None,
+            use_proxy : bool = False,
+            no_geom : bool = False,
+            format : Literal["json", "geojson"] = "json"
+    ) -> dict | List[dict]:
+        params = {
+            "unid": area_id or unid or id,
+            "exutorio": exutorio,
+            "exutorio_id": exutorio_id,
+            "geom": geom,
+            "tabla": tabla,
+            "pagination": pagination,
+            "limit": limit,
+            "offset": offset,
+            "no_geom": no_geom,
+            "format": format
+        }
+        response = requests.get("%s/obs/areal/areas" % (self.url),
+            params = params,
+            headers = self.request_headers,
+            proxies = self.proxy_dict if use_proxy else None
+        )
+        if response.status_code != 200:
+            raise Exception("request failed for area id: %s. message: %s" % (area_id, response.text))
+        json_response = response.json()
+        return json_response
+
+
     def readArea(
         self,
         area_id : int,
@@ -486,7 +526,7 @@ class Crud():
     def createObservaciones(
         self,
         data : Union[pandas.DataFrame, list],
-        series_id : int,
+        series_id : int|None=None,
         column : str= "valor",
         tipo : str = "puntual", 
         timeSupport : timedelta = None,
@@ -521,6 +561,8 @@ class Crud():
             raise Exception("request failed: %s" % response.text)
         json_response = response.json()
         return json_response
+    
+
 
     def readCalibrado(
         self,
@@ -905,7 +947,7 @@ client = Crud(config["server"]["url"], config["server"]["token"])
 
 def observacionesDataFrameToList(
     data : pandas.DataFrame,
-    series_id : int,
+    series_id : int|None=None,
     column : str = "valor",
     timeSupport : timedelta = None
     ) -> List[dict]:
@@ -913,7 +955,7 @@ def observacionesDataFrameToList(
 
     Args:
         data (pandas.DataFrame): dataframe con índice tipo datetime y valores en columna "column"
-        series_id (int): Series identifier
+        series_id (int): Series identifier. If None, series_id column must be in data
         column (str, optional): Column that contains the values. Defaults to "valor".
         timeSupport (timedelta, optional): Time support of the observation. Used to set timeend. Defaults to None.
 
@@ -925,6 +967,10 @@ def observacionesDataFrameToList(
     """
     # data: dataframe con índice tipo datetime y valores en columna "column"
     # timeSupport: timedelta object
+    if series_id:
+        data["series_id"] = series_id
+    elif "series_id" not in data:
+        raise ValueError("Missing series_id: 'series_id' argument not passed and column 'series_id' not present in dataframe") 
     if data.index.dtype.name != 'datetime64[ns, America/Argentina/Buenos_Aires]':
         if "timestart" in data.columns:
             data.index = data["timestart"].map(tryParseAndLocalizeDate)
@@ -934,8 +980,8 @@ def observacionesDataFrameToList(
     if column not in data.columns:
         raise Exception("column %s not found in data" % column)
     data = data.sort_index()
-    data["series_id"] = series_id
-    data["timeend"] = data.index.map(lambda x: x.isoformat()) if timeSupport is None else data.index.map(lambda x: (x + timeSupport).isoformat())
+    if "timeend" not in data:
+        data["timeend"] = data.index.map(lambda x: x.isoformat()) if timeSupport is None else data.index.map(lambda x: (x + timeSupport).isoformat())
     data["timestart"] = data.index.map(lambda x: x.isoformat()) # strftime('%Y-%m-%dT%H:%M:%SZ') 
     data["valor"] = data[column]
     data = data[["series_id","timestart","timeend","valor"]]
