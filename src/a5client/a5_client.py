@@ -312,21 +312,21 @@ class Crud():
 
     def readAreas(
             self,
-            area_id : int | List[int] | None=None,
-            unid : int | List[int] | None=None,
-            id : int | List[int] | None=None,
-            nombre : str | List[str] | None=None,
-            exutorio : str | None=None,
-            exutorio_id : int | List[int] | None=None,
-            geom : str | None=None,
-            tabla : str | None=None,
-            pagination : bool | None=None,
-            limit : int | None=None,
-            offset : int | None=None,
+            area_id : Union[int,List[int],None]=None,
+            unid : Union[int,List[int],None]=None,
+            id : Union[int,List[int],None]=None,
+            nombre : Union[str,List[str],None]=None,
+            exutorio : Union[str,None]=None,
+            exutorio_id : Union[int,List[int],None]=None,
+            geom : Union[str,None]=None,
+            tabla : Union[str,None]=None,
+            pagination : Union[bool,None]=None,
+            limit : Union[int,None]=None,
+            offset : Union[int,None]=None,
             use_proxy : bool = False,
             no_geom : bool = False,
             format : Literal["json", "geojson"] = "json"
-    ) -> dict | List[dict]:
+    ) -> Union[dict,List[dict]]:
         params = {
             "unid": area_id or unid or id,
             "exutorio": exutorio,
@@ -526,7 +526,7 @@ class Crud():
     def createObservaciones(
         self,
         data : Union[pandas.DataFrame, list],
-        series_id : int|None=None,
+        series_id : Union[int,None]=None,
         column : str= "valor",
         tipo : str = "puntual", 
         timeSupport : timedelta = None,
@@ -555,7 +555,8 @@ class Crud():
         response = requests.post(url, json = {
                 "observaciones": data
             }, headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(10,500)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -947,7 +948,7 @@ client = Crud(config["server"]["url"], config["server"]["token"])
 
 def observacionesDataFrameToList(
     data : pandas.DataFrame,
-    series_id : int|None=None,
+    series_id : Union[int,None]=None,
     column : str = "valor",
     timeSupport : timedelta = None
     ) -> List[dict]:
