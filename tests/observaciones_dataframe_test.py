@@ -59,21 +59,24 @@ class TestObservacionesDataFrameToList(TestCase):
         data = pandas.DataFrame([
             {
                 "timestart": "2000-01-01T00:00:00-03:00",
+                "timeend": "2000-01-01T01:00:00-03:00",
                 "series_id": 1,
                 "valor": 45.8
             },
             {
                 "timestart": "2000-01-01T00:00:00-03:00",
+                "timeend": "2000-01-01T01:00:00-03:00",
                 "series_id": 2,
                 "valor": 34.3
             },
             {
                 "timestart": "2000-01-01T00:00:00-03:00",
+                "timeend": "2000-01-01T01:00:00-03:00",
                 "series_id": 3,
                 "valor": 22.1
             }
         ])
-        observaciones = observacionesDataFrameToList(data, timeSupport=timedelta(days=1))
+        observaciones = observacionesDataFrameToList(data)
 
         self.assertTrue(isinstance(observaciones, list), "list return type expected")
         self.assertEqual(len(observaciones),3," 3 returned observacion element expected")
@@ -82,7 +85,7 @@ class TestObservacionesDataFrameToList(TestCase):
             self.assertEqual(type(observacion["timestart"]), str,"expected str type for timestart. Instead, %s was found" % type(observacion["timestart"]))
             expected_ts = "2000-01-01T00:00:00-03:00"
             self.assertEqual(observacion["timestart"], expected_ts)
-            expected_te = "2000-01-02T00:00:00-03:00"
+            expected_te = "2000-01-01T01:00:00-03:00"
             self.assertEqual(observacion["timeend"], expected_te)
             self.assertEqual(observacion["series_id"], i + 1)
 

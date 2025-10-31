@@ -980,7 +980,9 @@ def observacionesDataFrameToList(
     if column not in data.columns:
         raise Exception("column %s not found in data" % column)
     data = data.sort_index()
-    if "timeend" not in data:
+    if "timeend" in data:
+        data["timeend"] = data["timeend"].map(tryParseAndLocalizeDate).map(lambda x: x.isoformat())
+    else:
         data["timeend"] = data.index.map(lambda x: x.isoformat()) if timeSupport is None else data.index.map(lambda x: (x + timeSupport).isoformat())
     data["timestart"] = data.index.map(lambda x: x.isoformat()) # strftime('%Y-%m-%dT%H:%M:%SZ') 
     data["valor"] = data[column]
