@@ -176,6 +176,10 @@ class Crud():
     proxy_dict = DictDescriptor()
     """proxy parameters"""
 
+    timeout_connect = IntDescriptor()
+
+    timeout_response = IntDescriptor()
+
     @property
     def request_headers(self):
         """API authorisation header"""
@@ -185,7 +189,9 @@ class Crud():
         self,
         url : str,
         token : str,
-        proxy_dict : dict = None
+        proxy_dict : dict = None,
+        timeout_connect : int = 10,
+        timeout_response : int = 500
         ):
         """
         Args:
@@ -196,7 +202,8 @@ class Crud():
         self.url = url
         self.token = token
         self.proxy_dict = proxy_dict
-        
+        self.timeout_connect = timeout_connect
+        self.timeout_response = timeout_response        
 
     def readEstaciones(
         self,
@@ -230,7 +237,8 @@ class Crud():
         response = requests.get("%s/obs/puntual/estaciones" % (self.url),
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -303,7 +311,8 @@ class Crud():
         response = requests.get("%s/obs/%s/series" % (self.url, tipo),
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -342,7 +351,8 @@ class Crud():
         response = requests.get("%s/obs/areal/areas" % (self.url),
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed for area id: %s. message: %s" % (area_id, response.text))
@@ -376,7 +386,8 @@ class Crud():
         response = requests.get("%s/obs/areal/areas/%i" % (self.url, area_id),
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed for area id: %s. message: %s" % (area_id, response.text))
@@ -417,7 +428,8 @@ class Crud():
             url, 
             json = body, 
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -463,7 +475,8 @@ class Crud():
         response = requests.get("%s/obs/%s/series/%i" % (self.url, tipo, series_id),
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed for series tipo: %s, id: %s. message: %s" % (tipo, series_id, response.text))
@@ -516,7 +529,8 @@ class Crud():
                 "series_metadata": series_metadata
             },
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -556,7 +570,7 @@ class Crud():
                 "observaciones": data
             }, headers = self.request_headers,
             proxies = self.proxy_dict if use_proxy else None,
-            timeout=(10,500)
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -584,7 +598,8 @@ class Crud():
         """
         url = "%s/sim/calibrados/%i" % (self.url, cal_id)
         response = requests.get(url,headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: status: %i, message: %s" % (response.status_code, response.text))
@@ -617,7 +632,8 @@ class Crud():
             raise Exception("Missing parameter cal_id")
         url = "%s/sim/calibrados/%i/corridas" % (self.url, cal_id)
         response = requests.post(url, json = data, headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         logging.debug("createCorrida url: %s" % response.url)
         if response.status_code != 200:
@@ -644,7 +660,8 @@ class Crud():
         """
         response = requests.get("%s/obs/variables/%i" % (self.url, var_id),
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -714,7 +731,8 @@ class Crud():
                     "group_by_qualifier": True
                 },
                 headers = self.request_headers,
-                proxies = self.proxy_dict if use_proxy else None
+                proxies = self.proxy_dict if use_proxy else None,
+                timeout=(self.timeout_connect,self.timeout_response)
             )
             if corridas_response.status_code != 200:
                 raise Exception("request failed: %s" % corridas_response.text)
@@ -737,7 +755,8 @@ class Crud():
                     "group_by_qualifier": True
                 },
                 headers = self.request_headers,
-                proxies = self.proxy_dict if use_proxy else None
+                proxies = self.proxy_dict if use_proxy else None,
+                timeout=(self.timeout_connect,self.timeout_response)
             )
             if corridas_response.status_code != 200:
                 raise Exception("request failed: %s" % corridas_response.text)
@@ -766,7 +785,8 @@ class Crud():
         response = requests.get(url,
             params = params,
             headers = self.request_headers,
-            proxies = self.proxy_dict if use_proxy else None
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout=(self.timeout_connect,self.timeout_response)
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
@@ -867,7 +887,9 @@ class Crud():
             },
             headers = {
                 'Authorization': 'Bearer ' + self.token
-            })
+            },
+            timeout=(self.timeout_connect,self.timeout_response)
+        )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
         return response.json()
@@ -942,7 +964,7 @@ class Crud():
 
 ## Default client
 
-client = Crud(config["server"]["url"], config["server"]["token"])
+client = Crud(**dict(config.items("server")))
 
 ## AUX functions
 
