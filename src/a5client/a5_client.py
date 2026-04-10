@@ -3,7 +3,7 @@ import requests
 import pandas
 from a5_client_utils import tryParseAndLocalizeDate
 from a5_client_utils.descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
-from a5_client_utils.types import SeriesPronoDict, CorridaDict
+from a5_client_utils.types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno
 import json
 import os
 from datetime import datetime, timedelta
@@ -11,9 +11,10 @@ from datetime import datetime, timedelta
 import logging
 from .config import config
 log_config = config["log"]
-from typing import List, Union, Literal
+from typing import List, Union, Literal, Optional, overload, cast, Dict, Any, Tuple, TypedDict, TypeGuard
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
+from .geojson_type_check import is_geojson
 
 logging.basicConfig(
     filename = os.path.join(
@@ -39,6 +40,10 @@ from .a5_schemas import schemas
 # )
 # serie_schema = yaml.load(serie_schema,yaml.CLoader)
 
+class ObsTuple(TypedDict):
+    timestart : datetime
+    valor : float
+
 def validate(
     instance : dict,
     classname : str
@@ -57,6 +62,167 @@ def validate(
     if classname not in schemas["components"]["schemas"].keys():
         raise Exception("Invalid class")
     return json_validate(instance,schema=schemas) #[classname])
+
+# parsers
+
+SeriesTable = Literal["series", "series_areal", "series_rast"]
+
+def is_series_table(x: str) -> TypeGuard[SeriesTable]:
+    return x in {"series", "series_areal", "series_rast"}
+
+@overload
+def checkInt(data, optional : Literal[True], name : str="key") -> Optional[int]: ...
+@overload
+def checkInt(data, optional : Literal[False]=False, name : str="key") -> int: ...
+def checkInt(data, optional : bool=False, name : str="key") -> Optional[int]:
+    if data is not None:
+        if not isinstance(data, int):
+            raise ValueError("Invalid int for %s" % name)
+        return data
+    else:
+        if optional:
+            return None
+        else:
+            raise ValueError("Invalid int for %s" % name)
+
+@overload
+def checkFloat(data, optional : Literal[True], name : str="key") -> Optional[float]: ...
+@overload
+def checkFloat(data, optional : Literal[False]=False, name : str="key") -> float: ...
+def checkFloat(data, optional : bool=False, name : str="key") -> Optional[float]:
+    if data is not None:
+        if not isinstance(data, float):
+            try:
+                fl = float(data)
+            except ValueError:
+                raise ValueError("Invalid float for %s" % name)
+            return fl
+        return data
+    else:
+        if optional:
+            return None
+        else:
+            raise ValueError("Invalid float for %s" % name)
+
+
+@overload
+def checkStr(data, optional : Literal[True], name : str="key") -> Optional[str]: ...
+@overload
+def checkStr(data, optional : Literal[False]=False, name : str="key") -> str: ...
+def checkStr(data, optional : bool=False, name : str="key") -> Optional[str]:
+    if data is not None:
+        if not isinstance(data, str):
+            raise ValueError("Invalid str for %s" % name)
+        return data
+    else:
+        if optional:
+            return None
+        else:
+            raise ValueError("Invalid str for %s" % name)
+
+@overload
+def parseDatetime(data, optional : Literal[True], name : str="key") -> Optional[datetime]: ...
+@overload
+def parseDatetime(data, optional : Literal[False]=False, name : str="key") -> datetime: ...
+def parseDatetime(data, optional : bool=False, name : str="key") -> Optional[datetime]:
+    if data is not None:
+        dt = tryParseAndLocalizeDate(data)
+        if data is None:
+            raise ValueError("Invalid datetime for %s" % name)
+        return dt
+    else:
+        if optional:
+            return None
+        else:
+            raise ValueError("Invalid datetime for %s" % name)
+
+def parseTVPProno(data) -> TVPProno:
+    if not isinstance(data, dict):
+        raise ValueError("invalid pronosticos item")
+    timestart = parseDatetime(data.get("timestart"),name="timestart")
+    timeend = parseDatetime(data.get("timeend"),name="timeend")
+    valor = checkFloat(data.get("valor"), name="valor")
+    series_id = checkInt(data.get("series_id"), optional=True, name="series_id")
+    qualifier = checkStr(data.get("qualifier"), optional=True, name="qualifier")
+    return {
+        "timestart": timestart,
+        "timeend": timeend,
+        "valor": valor,
+        "series_id": series_id,
+        "qualifier": qualifier
+    }
+
+def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime) -> SeriesPronoDict:
+    if not isinstance(data, dict):
+        raise ValueError("invalid serie prono")
+    series_table = checkStr(data.get("series_table"))
+    if not is_series_table(series_table):
+        raise ValueError("Invalid series_table")
+    series_id = checkInt(data.get("series_id"), name="series_id")
+    cor_id = checkInt(data.get("cor_id"), name='cor_id')
+    pronosticos_ = data.get("pronosticos")
+    if not isinstance(pronosticos_, list):
+        raise ValueError("Invalid pronosticos")
+    pronosticos = [ parseTVPProno(p) for p in pronosticos_]
+    var_id = checkInt(data.get("var_id"), optional=True, name="var_id")
+    begin_date = parseDatetime(data.get("begin_date"),optional=True)
+    end_date  = parseDatetime(data.get("end_date"),optional=True)
+    qualifiers_ = data.get("qualifiers")
+    qualifiers : Optional[List[str]]
+    if qualifiers_ is not None:
+        if not isinstance(qualifiers_, list):
+            raise ValueError("Invalid qualifiers")
+        qualifiers = []
+        for q in qualifiers_:
+            if not isinstance(q, str):
+                raise ValueError("Invalid qualifier")
+            qualifiers.append(q)
+    else:
+        qualifiers = None    
+    count = checkInt(data.get("count"), optional=True, name="count")
+    estacion_id = checkInt(data.get("estacion_id"), optional=True, name="estacion_id")
+    return {
+        "cal_id": cal_id,
+        "forecast_date": forecast_date,
+        "series_table": series_table,
+        "series_id": series_id,
+        "cor_id": cor_id,
+        "pronosticos": pronosticos,
+        "var_id": var_id,
+        "begin_date": begin_date,
+        "end_date": end_date,
+        "qualifier": None,
+        "qualifiers": qualifiers,
+        "count": count,
+        "estacion_id": estacion_id
+    }
+
+def parseCorrida(data: dict) -> CorridaDict:
+    id_ = data.get("id")
+    if not isinstance(id_, int):
+        raise ValueError("invalid id")
+    id : int = id_
+    fd = data.get("forecast_date")
+    if not isinstance(fd, str):
+        raise ValueError("invalid forecast_date")
+    fd_ = tryParseAndLocalizeDate(fd)
+    if fd_ is None:
+        raise ValueError("Invalid forecast_date")
+    forecast_date : datetime = fd_
+    series_ = data.get("series")
+    if not isinstance(series_, list):
+        raise ValueError("Invalid series")
+    series = series_
+    series_parsed = []
+    for serie_ in series:
+        serie = parseSerieProno(serie_, cal_id=id, forecast_date=forecast_date)
+        series_parsed.append(serie)
+    return {
+        "id": id,
+        "forecast_date": forecast_date,
+        "series": series_parsed
+    }
+
 
 # CLASSES
 
@@ -83,12 +249,12 @@ class Observacion():
 
     def __init__(
         self,
-        timestart : datetime,
+        timestart : Union[datetime, str],
         valor : float,
-        timeend : datetime = None,
-        series_id : int = None,
+        timeend : Optional[Union[datetime,str]] = None,
+        series_id : Optional[int] = None,
         tipo : str = "puntual",
-        tag : str = None
+        tag : Optional[str] = None
     ):
         """
         Args:
@@ -100,8 +266,11 @@ class Observacion():
             tag (str, optional): Observation tag. Defaults to None.
         """
         # json_validate(params,"Observacion")
-        self.timestart = timestart
-        self.timeend = timeend
+        parsed_ts = tryParseAndLocalizeDate(timestart)
+        if parsed_ts is None:
+            raise Exception("Invalid timestart")
+        self.timestart = parsed_ts
+        self.timeend = tryParseAndLocalizeDate(timeend) if timeend is not None else None
         self.valor = valor
         self.series_id = series_id
         self.tipo = tipo
@@ -140,8 +309,8 @@ class Serie():
 
     def __init__(
         self,
-        id : int = None,
-        tipo : str = None,
+        id : Optional[int] = None,
+        tipo : Optional[str] = None,
         observaciones : List[dict] = []
         ):
         """
@@ -189,9 +358,9 @@ class Crud():
         self,
         url : str,
         token : str,
-        proxy_dict : dict = None,
-        timeout_connect : int = 10,
-        timeout_response : int = 500
+        proxy_dict : Optional[Dict[str,str]] = None,
+        timeout_connect : Optional[int] = 10,
+        timeout_response : Optional[int] = 500
         ):
         """
         Args:
@@ -207,27 +376,27 @@ class Crud():
 
     def readEstaciones(
         self,
-        fuentes_id : int = None,
-        nombre : str = None,
-        unid  : int = None,
-        id  : int = None,
-        id_externo : str = None,
-        distrito : str = None,
-        pais : str = None,
-        has_obs : bool = None, 
-        real  : bool = None,
-        habilitar : bool = None,
-        tipo : str = None,
-        has_prono : bool = None, 
-        rio  : str = None,
-        tipo_2  : str = None,
-        geom  : Union[str,dict] = None,
-        propietario  : str = None,
-        automatica : bool = None, 
-        ubicacion  : str = None,
-        localidad  : str = None,
-        tabla  : str = None,
-        get_drainage_basin : bool = None,
+        fuentes_id : Optional[int] = None,
+        nombre : Optional[str] = None,
+        unid  : Optional[int] = None,
+        id  : Optional[int] = None,
+        id_externo : Optional[str] = None,
+        distrito : Optional[str] = None,
+        pais : Optional[str] = None,
+        has_obs : Optional[bool] = None, 
+        real  : Optional[bool] = None,
+        habilitar : Optional[bool] = None,
+        tipo : Optional[str] = None,
+        has_prono : Optional[bool] = None, 
+        rio  : Optional[str] = None,
+        tipo_2  : Optional[str] = None,
+        geom  : Optional[Union[str,dict]] = None,
+        propietario  : Optional[str] = None,
+        automatica : Optional[bool] = None, 
+        ubicacion  : Optional[str] = None,
+        localidad  : Optional[str] = None,
+        tabla  : Optional[str] = None,
+        get_drainage_basin : Optional[bool] = None,
         use_proxy : bool = False
     ):
         if geom is not None and type(geom) == dict:
@@ -248,25 +417,25 @@ class Crud():
     def readSeries(
         self,
         tipo : str = "puntual",
-        series_id : int = None,
-        area_id : int = None,
-        estacion_id : int = None,
-        escena_id : int = None,
-        var_id : int = None,
-        proc_id : int = None,
-        unit_id : int = None,
-        fuentes_id : int = None,
-        tabla : str = None,
-        id_externo : str = None,
-        geom : Union[str,dict] = None,
-        include_geom : bool = None,
-        no_metadata : bool = None,
-        date_range_before : datetime = None,
-        date_range_after : datetime = None,
-        getMonthlyStats : bool = None,
-        getStats : bool = None,
-        getPercentiles : bool = None,
-        percentil : float = None,
+        series_id : Optional[int] = None,
+        area_id : Optional[int] = None,
+        estacion_id : Optional[int] = None,
+        escena_id : Optional[int] = None,
+        var_id : Optional[int] = None,
+        proc_id : Optional[int] = None,
+        unit_id : Optional[int] = None,
+        fuentes_id : Optional[int] = None,
+        tabla : Optional[str] = None,
+        id_externo : Optional[str] = None,
+        geom : Optional[Union[str,dict]] = None,
+        include_geom : Optional[bool] = None,
+        no_metadata : Optional[bool] = None,
+        date_range_before : Optional[Union[datetime,str]] = None,
+        date_range_after : Optional[Union[datetime,str]] = None,
+        getMonthlyStats : Optional[bool] = None,
+        getStats : Optional[bool] = None,
+        getPercentiles : Optional[bool] = None,
+        percentil : Optional[float] = None,
         use_proxy : bool = False
         ) -> dict:
         """Retrieve series
@@ -394,6 +563,22 @@ class Crud():
         json_response = response.json()
         return json_response
 
+    @overload
+    def createSites(
+        self,
+        data : GeoJSON,
+        tipo : Literal["estaciones","areas","escenas"],
+        format : Literal["geojson"],
+        use_proxy: bool = False
+    ) -> list: ...
+    @overload
+    def createSites(
+        self,
+        data : Union[List[Area], List[Estacion], List[Escena]],
+        tipo : Literal["estaciones","areas","escenas"],
+        format : Literal["json"],
+        use_proxy: bool = False
+    ) -> list: ...
     def createSites(
         self,
         data : Union[List[Area], List[Estacion], List[Escena], GeoJSON],
@@ -411,15 +596,18 @@ class Crud():
         Returns:
             dict: create/updated stations list"""
         if format.lower() == "geojson":
-            data = geojsonToList(data)
+            if not is_geojson(data):
+                raise ValueError("Invalid GeoJSON format")
+            validate(cast(dict,data), "GeoJSON")
+            data = geojsonToList(cast(GeoJSON,data))
         if tipo == "estaciones":
-            [validate(x,"Estacion") for x in data]
+            [validate(cast(dict,x), "Estacion") for x in data]
             url = "%s/obs/puntual/estaciones" % (self.url)
         elif tipo == "areas":
-            [validate(x,"Area") for x in data]
+            [validate(cast(dict,x), "Area") for x in data]
             url = "%s/obs/areal/areas" % (self.url)
         else:
-            [validate(x,"Escena") for x in data]
+            [validate(cast(dict,x), "Escena") for x in data]
             url = "%s/obs/raster/escenas" % (self.url)
         body = {}
         body[tipo] = data
@@ -441,8 +629,8 @@ class Crud():
     def readSerie(
         self,
         series_id : int,
-        timestart : datetime = None,
-        timeend : datetime = None,
+        timestart : Optional[datetime] = None,
+        timeend : Optional[datetime] = None,
         tipo : str = "puntual",
         use_proxy : bool = False,
         no_metadata : bool = False,
@@ -465,7 +653,7 @@ class Crud():
         Returns:
             dict: raw serie dict
         """
-        params = {
+        params : Dict[str, Any] = {
             "no_metadata": no_metadata,
             "include_partial_time_intersection": include_partial_time_intersection
         }
@@ -543,7 +731,7 @@ class Crud():
         series_id : Union[int,None]=None,
         column : str= "valor",
         tipo : str = "puntual", 
-        timeSupport : timedelta = None,
+        timeSupport : Optional[timedelta] = None,
         use_proxy : bool = False
         ) -> list:
         """Create observations
@@ -609,7 +797,7 @@ class Crud():
     def createCorrida(
         self,
         data : dict,
-        cal_id : int = None,
+        cal_id : Optional[int] = None,
         use_proxy : bool = False
         ) -> dict:
         """Create simulation run
@@ -670,20 +858,20 @@ class Crud():
 
     def readSerieProno(
         self,
-        series_id : int = None,
-        cal_id : int = None,
-        timestart : datetime = None,
-        timeend : datetime = None,
+        series_id : Optional[int] = None,
+        cal_id : Optional[int] = None,
+        timestart : Optional[datetime] = None,
+        timeend : Optional[datetime] = None,
         use_proxy : bool = False,
-        cor_id : int = None,
-        forecast_date : datetime = None,
-        qualifier : str = None,
-        forecast_timestart : datetime = None,
-        tipo : str = None,
-        estacion_id : int = None,
-        var_id : int = None,
+        cor_id : Optional[int] = None,
+        forecast_date : Optional[datetime] = None,
+        qualifier : Optional[str] = None,
+        forecast_timestart : Optional[datetime] = None,
+        tipo : Optional[str] = None,
+        estacion_id : Optional[int] = None,
+        var_id : Optional[int] = None,
         archived : bool = False
-        ) -> dict:
+        ) -> SeriesPronoDict:
         """
         Reads prono serie from a5 API
         if forecast_date is not None, cor_id is overwritten by first corridas match
@@ -709,6 +897,7 @@ class Crud():
 
         Raises:
             Exception: Request failed if status code is not 200
+            FileNotFoundError: No forecast series found
 
         Returns:
             dict : a forecast run 
@@ -740,11 +929,10 @@ class Crud():
             if len(corridas):
                 cor_id = corridas[0]["cor_id"]
             else:
-                logging.warn("Series %i from cal_id %i at forecast_date %s not found" % (series_id,cal_id,forecast_date))
-                return {
-                    "series_id": series_id,
-                    "pronosticos": []
-                }
+                if series_id is None:
+                    raise FileNotFoundError("Series not found for cal_id %i at forecast_date %s, var_id %i, estacion_id %i" % (cal_id, forecast_date, var_id, estacion_id))
+                else: 
+                    raise FileNotFoundError("Series %i from cal_id %i at forecast_date %s not found" % (series_id,cal_id,forecast_date))
         elif forecast_timestart is not None:
             corridas_response = requests.get("%s/sim/calibrados/%i/%s" % (self.url, cal_id, "corridas_guardadas" if archived else "corridas"),
                 params = {
@@ -764,12 +952,10 @@ class Crud():
             if len(corridas):
                 cor_id = corridas[len(corridas)-1]["cor_id"] if "cor_id" in corridas[len(corridas)-1] else corridas[len(corridas)-1]["id"]
             else:
-                logging.warn("forecast run with cal_id %i at forecast_date greater than %s not found" % (cal_id,forecast_timestart))
-                return {
-                    "series_id": series_id,
-                    "tipo": tipo,
-                    "pronosticos": []
-                }
+                if series_id is None:
+                    raise FileNotFoundError("Forecast run with cal_id %i at forecast_date greater than %s, var_id %i, estacion_id %i not found" % (cal_id, forecast_timestart, var_id, estacion_id))
+                else: 
+                    raise FileNotFoundError("Forecast run for series %i from cal_id %i at forecast_date greater than %s not found" % (series_id,cal_id,forecast_timestart))
         if timestart is not None and timeend is not None:
             params["timestart"] = timestart if isinstance(timestart,str) else timestart.isoformat()
             params["timeend"] = timeend if isinstance(timestart,str) else timeend.isoformat()
@@ -793,85 +979,86 @@ class Crud():
         json_response = response.json()
         if type(json_response) == list:
             json_response = json_response[0]
-        if "series" not in json_response:
-            logging.warning("Series %i from cal_id %i not found" % (series_id,cal_id))
-            return {
-                "forecast_date": json_response["forecast_date"],
-                "cal_id": json_response["cal_id"],
-                "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-                "series_id": series_id,
-                "tipo": tipo,
-                "qualifier": None,
-                "pronosticos": []
-            }
-        if not len(json_response["series"]):
-            logging.warn("Series %i from cal_id %i not found" % (series_id,cal_id))
-            return {
-                "forecast_date": json_response["forecast_date"],
-                "cal_id": json_response["cal_id"],
-                "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-                "series_id": series_id,
-                "tipo": tipo,
-                "qualifier": None,
-                "pronosticos": []
-            }
+        try:
+            data = parseCorrida(json_response)
+        except ValueError as e:
+            raise ValueError(f"Invalid data returned from server: {e}")
+        if "series" not in data:
+            if series_id is None:
+                raise FileNotFoundError("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
+            else: 
+                raise FileNotFoundError("Series %i from cal_id %i" % (series_id,cal_id))
+        if not len(data["series"]):
+            if series_id is None:
+                raise FileNotFoundError("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
+            else: 
+                raise FileNotFoundError("Series %i from cal_id %i" % (series_id,cal_id))
+        
         if qualifier is not None and qualifier == 'all':
             pronosticos = []
-            for member in json_response["series"]:
+            qualifiers = []
+            for member in data["series"]:
                 pronosticos.append({
                     "qualifier": member["qualifier"],
-                    "pronosticos": [ observacionTupleToDict(x) for x in member["pronosticos"] ]
+                    "pronosticos": member["pronosticos"]
                 })
+                qualifiers.append(member["qualifier"])
             return {
-                "forecast_date": json_response["forecast_date"],
-                "cal_id": json_response["cal_id"],
-                "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-                "series_id": json_response["series"][0]["series_id"],
-                "tipo": getSeriesTipo(json_response["series"][0]["series_table"]),
+                "forecast_date": data["forecast_date"],
+                "cal_id": data["id"],
+                "cor_id": data["id"] if "id" in data else data["cor_id"],
+                "series_id": data["series"][0]["series_id"],
+                "tipo": getSeriesTipo(data["series"][0]["series_table"]),
+                "series_table": data["series"][0]["series_table"],
+                "qualifiers": qualifiers,
+                "qualifier": None,
                 "pronosticos": pronosticos
             }
-        if "pronosticos" not in json_response["series"][0]:
-            logging.warn("Pronosticos from series %i from cal_id %i not found" % (series_id,cal_id))
+        if "pronosticos" not in data["series"][0]:
+            logging.warning("Pronosticos from series %i from cal_id %i not found" % (series_id,cal_id))
             return {
-                "forecast_date": json_response["forecast_date"],
-                "cal_id": json_response["cal_id"],
-                "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-                "series_id": json_response["series"][0]["series_id"],
-                "tipo": getSeriesTipo(json_response["series"][0]["series_table"]),
-                "qualifier": json_response["series"][0]["qualifier"],
+                "forecast_date": data["forecast_date"],
+                "cal_id": data["id"],
+                "cor_id": data["id"] if "id" in data else data["cor_id"],
+                "series_id": data["series"][0]["series_id"],
+                "tipo": getSeriesTipo(data["series"][0]["series_table"]),
+                "qualifier": data["series"][0]["qualifier"],
+                "series_table": data["series"][0]["series_table"],
                 "pronosticos": []
             }
-        if not len(json_response["series"][0]["pronosticos"]):
-            logging.warn("Pronosticos from series %i from cal_id %i is empty" % (series_id,cal_id))
+        if not len(data["series"][0]["pronosticos"]):
+            logging.warning("Pronosticos from series %i from cal_id %i is empty" % (series_id,cal_id))
             return {
-                "forecast_date": json_response["forecast_date"],
-                "cal_id": json_response["cal_id"],
-                "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-                "series_id": json_response["series"][0]["series_id"],
-                "tipo": getSeriesTipo(json_response["series"][0]["series_table"]),
-                "qualifier": json_response["series"][0]["qualifier"],
+                "forecast_date": data["forecast_date"],
+                "cal_id": data["id"],
+                "cor_id": data["id"] if "id" in data else data["cor_id"],
+                "series_id": data["series"][0]["series_id"],
+                "tipo": getSeriesTipo(data["series"][0]["series_table"]),
+                "qualifier": data["series"][0]["qualifier"],
+                "series_table": data["series"][0]["series_table"],
                 "pronosticos": []
             }
-        json_response["series"][0]["pronosticos"] = [ observacionTupleToDict(x) for x in json_response["series"][0]["pronosticos"]] # "series_id": series_id, "timeend": x[1] "qualifier":x[3]
+        # data["series"][0]["pronosticos"] = [ observacionTupleToDict(x) for x in data["series"][0]["pronosticos"]] # "series_id": series_id, "timeend": x[1] "qualifier":x[3]
         return {
-            "forecast_date": json_response["forecast_date"],
-            "cal_id": json_response["cal_id"],
-            "cor_id": json_response["id"] if "id" in json_response else json_response["cor_id"],
-            "series_id": json_response["series"][0]["series_id"],
-            "qualifier": json_response["series"][0]["qualifier"] if "qualifier" in json_response["series"][0] else None,
-            "pronosticos": json_response["series"][0]["pronosticos"]
+            "forecast_date": data["forecast_date"],
+            "cal_id": data["id"],
+            "cor_id": data["id"] if "id" in data else data["cor_id"],
+            "series_id": data["series"][0]["series_id"],
+            "qualifier": data["series"][0]["qualifier"] if "qualifier" in data["series"][0] else None,
+            "series_table": data["series"][0]["series_table"],
+            "pronosticos": data["series"][0]["pronosticos"]
         }
-
+    
     def readCorridas(
         self,
         cal_id : int,
-        series_id : int = None,
-        forecast_timestart : datetime = None,
-        forecast_timeend : datetime = None,
-        qualifier : str = None,
+        series_id : Optional[int] = None,
+        forecast_timestart : Optional[datetime] = None,
+        forecast_timeend : Optional[datetime] = None,
+        qualifier : Optional[str] = None,
         includeProno : bool = False,
         group_by_qualifier : bool = False,
-        tipo : str = None,
+        tipo : Optional[str] = None,
         archived : bool = False
         ) -> List[CorridaDict]:
         response = requests.get(
@@ -894,16 +1081,40 @@ class Crud():
             raise Exception("request failed: %s" % response.text)
         return response.json()
 
+    @overload
     def readSeriePronoConcat(
         self,
         cal_id : int,
         series_id : int,
-        qualifier : str = None,
-        forecast_timestart : datetime = None,
-        forecast_timeend : datetime = None,
-        tipo : str = None,
+        qualifier : Optional[str] = None,
+        forecast_timestart : Optional[datetime] = None,
+        forecast_timeend : Optional[datetime] = None,
+        tipo : Optional[Literal["puntual","areal","raster"]] = None,
+        *,
+        group_by_qualifier : Literal[True]
+        ) -> SeriesPronoGroupedByQualifierDict: ...
+    @overload
+    def readSeriePronoConcat(
+        self,
+        cal_id : int,
+        series_id : int,
+        qualifier : Optional[str] = None,
+        forecast_timestart : Optional[datetime] = None,
+        forecast_timeend : Optional[datetime] = None,
+        tipo : Optional[Literal["puntual","areal","raster"]] = None,
+        *,
+        group_by_qualifier : Literal[False] = False
+        ) -> SeriesPronoDict: ...
+    def readSeriePronoConcat(
+        self,
+        cal_id : int,
+        series_id : int,
+        qualifier : Optional[str] = None,
+        forecast_timestart : Optional[datetime] = None,
+        forecast_timeend : Optional[datetime] = None,
+        tipo : Optional[Literal["puntual","areal","raster"]] = None,
         group_by_qualifier : bool = False
-        ) -> SeriesPronoDict:
+        ) -> Union[SeriesPronoDict, SeriesPronoGroupedByQualifierDict]:
         """Retrieves history of forecast runs and concatenates into a single series (newer runs overwrite older runs). If qualifier is not set and multiple qualifiers exist, a mixed qualifier series is returned unless group_by_qualifier is set to True"""
         corridas = self.readCorridas(
             cal_id,
@@ -939,7 +1150,7 @@ class Crud():
                 "cal_id": cal_id,
                 "series_id": series_id,
                 "tipo": tipo,
-                "qualifier": qualifier,
+                "series_table": get_series_table(tipo),
                 "forecast_timestart": forecast_timestart,
                 "forecast_timeend": forecast_timeend,
                 "pronosticos": [ {"qualifier": q, "pronosticos": [ obs for ts, obs in serie.items()]} for q, serie in qualifiers.items() ],
@@ -955,6 +1166,7 @@ class Crud():
             "cal_id": cal_id,
             "series_id": series_id,
             "tipo": tipo,
+            "series_table": get_series_table(tipo),
             "qualifier": qualifier,
             "forecast_timestart": forecast_timestart,
             "forecast_timeend": forecast_timeend,
@@ -963,8 +1175,7 @@ class Crud():
         }
 
 ## Default client
-
-client = Crud(**dict(config.items("server")))
+client = Crud(**config["server"])
 
 ## AUX functions
 
@@ -972,7 +1183,7 @@ def observacionesDataFrameToList(
     data : pandas.DataFrame,
     series_id : Union[int,None]=None,
     column : str = "valor",
-    timeSupport : timedelta = None
+    timeSupport : Optional[timedelta] = None
     ) -> List[dict]:
     """Convert Observations DataFrame to list of dict
 
@@ -1004,7 +1215,7 @@ def observacionesDataFrameToList(
         raise Exception("column %s not found in data" % column)
     data = data.sort_index()
     if "timeend" in data:
-        data["timeend"] = data["timeend"].map(tryParseAndLocalizeDate).map(lambda x: x.isoformat())
+        data["timeend"] = data["timeend"].map(tryParseAndLocalizeDate).map(lambda x: x.isoformat() if x is not None  and not pandas.isna(x) else None)
     else:
         data["timeend"] = data.index.map(lambda x: x.isoformat()) if timeSupport is None else data.index.map(lambda x: (x + timeSupport).isoformat())
     data["timestart"] = data.index.map(lambda x: x.isoformat()) # strftime('%Y-%m-%dT%H:%M:%SZ') 
@@ -1012,18 +1223,23 @@ def observacionesDataFrameToList(
     data = data[["series_id","timestart","timeend","valor"]]
     return data.to_dict(orient="records")
 
-def observacionTupleToDict(x : tuple):
-    return { 
-        "timestart": x[0], 
-        "valor": x[2]
-    } if type(x) == list or type(x) == tuple else {
-        "timestart": x["timestart"], 
-        "valor": x["valor"]
-    }
+def observacionTupleToDict(x : Union[Tuple[datetime,datetime,float], ObsTuple]) -> ObsTuple:
+    if isinstance(x, tuple):
+        return { 
+            "timestart": x[0], 
+            "valor": x[2]
+        }
+    elif isinstance(x, dict):
+        return {
+            "timestart": x["timestart"], 
+            "valor": x["valor"]
+        }
+    else:
+        raise TypeError("Invalid type")
 
 def observacionesListToDataFrame(
     data: list, 
-    tag: str = None
+    tag: Optional[str] = None
     ) -> pandas.DataFrame:
     """Convert observaciones list to DataFrame
 
@@ -1039,18 +1255,18 @@ def observacionesListToDataFrame(
     """
     if len(data) == 0:
         raise Exception("empty list")
-    data = pandas.DataFrame.from_dict(data)
-    data["valor"] = data["valor"].astype(float)
-    data.index = data["timestart"].apply(tryParseAndLocalizeDate)
-    data.sort_index(inplace=True)
+    df : pandas.DataFrame = pandas.DataFrame(data)
+    df["valor"] = df["valor"].astype(float)
+    df.index = df["timestart"].apply(tryParseAndLocalizeDate)
+    df.sort_index(inplace=True)
     if tag is not None:
-        data["tag"] = tag
-        return data[["valor","tag"]]
+        df["tag"] = tag
+        return df[["valor","tag"]]
     else:
-        return data[["valor",]]
+        return df[["valor",]]
 
 def createEmptyObsDataFrame(
-    extra_columns : dict = None
+    extra_columns : Optional[dict] = None
     ) -> pandas.DataFrame:
     """Create Observations DataFrame with no rows
 
@@ -1072,7 +1288,7 @@ def createEmptyObsDataFrame(
     data.index = data["timestart"]
     return data[cnames]
 
-def getSeriesTipo(series_table : str = None) -> str:
+def getSeriesTipo(series_table : Optional[SeriesTable] = None) -> Literal["puntual","areal","raster"]:
     if series_table is None:
         return "puntual"
     if series_table == "series":
@@ -1080,7 +1296,7 @@ def getSeriesTipo(series_table : str = None) -> str:
     if series_table == "series_areal":
         return "areal"
     if series_table == "series_rast":
-        return "rast"
+        return "raster"
     else:
         return "puntual"
 
@@ -1091,8 +1307,15 @@ def featureToSitio(
         raise ValueError("Invalid GeoJSON: missing properties")
     if "geometry" not in feature:
         raise ValueError("Invalid GeoJSON: missing geomerty")
-    sitio = {
-        **feature["properties"], 
+    if not "id" in feature["properties"]:
+        raise ValueError("Invalid GeoJSON: missing property id")
+    if not "nombre" in feature["properties"]:
+        raise ValueError("Invalid GeoJSON: missing property nombre")
+    id = int(feature["properties"]["id"])
+    nombre = str(feature["properties"]["nombre"])
+    sitio : Sitio = {
+        "id": int(feature["properties"]["id"]),
+        "nombre": str(feature["properties"]["nombre"]), 
         "geom": feature["geometry"]
     }
     return sitio
@@ -1112,6 +1335,14 @@ def geojsonToList(
         return [
             featureToSitio(feature) for feature in data["features"]
         ]
+
+def get_series_table(tipo: Optional[Literal["puntual","areal","raster"]]="puntual") -> Literal["series", "series_areal","series_rast"]:
+    if tipo == "areal":
+        return "series_areal"
+    elif tipo == "raster":
+        return "series_rast"
+    else:
+        return "series"
 
 ## EJEMPLO
 '''

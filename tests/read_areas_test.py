@@ -6,7 +6,8 @@ class TestReadAreas(TestCase):
     def test_json(self):
         client_ = Crud("https://alerta.ina.gob.ar/a5","my_token")
         areas = client_.readAreas()
-        self.assertTrue(isinstance(areas, dict))
+        # self.assertTrue(isinstance(areas, dict))
+        assert isinstance(areas, dict)
         self.assertTrue("areas" in areas)
         self.assertTrue(isinstance(areas["areas"],list))
         for area in areas["areas"]:
@@ -19,7 +20,8 @@ class TestReadAreas(TestCase):
     def test_geojson(self):
         client_ = Crud("https://alerta.ina.gob.ar/a5","my_token")
         areas = client_.readAreas(format="geojson")
-        self.assertTrue(isinstance(areas, dict))
+        # self.assertTrue(isinstance(areas, dict))
+        assert isinstance(areas, dict)
         self.assertTrue("features" in areas)
         self.assertTrue(isinstance(areas["features"],list))
         for feature in areas["features"]:

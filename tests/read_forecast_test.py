@@ -76,7 +76,9 @@ class TestReadForecasts(TestCase):
             forecast_timestart = forecast_timestart
         )
         for p in serie_forecast["pronosticos"]:
-            self.assertGreaterEqual(datetime.fromisoformat(p["timestart"]), forecast_timestart)
+            assert isinstance(p["timestart"], datetime)
+            # self.assertGreaterEqual(datetime.fromisoformat(p["timestart"]), forecast_timestart)
+            self.assertGreaterEqual(p["timestart"], forecast_timestart)
 
     ### readSerieProno
 
