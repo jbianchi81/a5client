@@ -51,7 +51,7 @@ class TestReadForecasts(TestCase):
             forecast_timeend = datetime.now() 
         )
         self.assertTrue(len(serie["pronosticos"]))
-        qualifiers = set([ p["qualifier"] for p in serie["pronosticos"] ])
+        qualifiers = set([ p["qualifier"] for p in serie["pronosticos"] if "qualifier" in p])
         self.assertEqual(len(qualifiers),3)
 
     def test_one_qualifier(self):
@@ -64,7 +64,7 @@ class TestReadForecasts(TestCase):
             qualifier = "superior"
         )
         self.assertTrue(len(serie["pronosticos"]))
-        qualifiers = set([ p["qualifier"] for p in serie["pronosticos"] ])
+        qualifiers = set([ p["qualifier"] for p in serie["pronosticos"]  if "qualifier" in p])
         self.assertEqual(len(qualifiers),1)
         self.assertIn("superior", qualifiers)
 
@@ -89,6 +89,7 @@ class TestReadForecasts(TestCase):
             cal_id = cal_id,
             series_id = series_id 
         )
+        assert "cal_id" in serie
         self.assertEqual(serie["cal_id"], cal_id)
         self.assertEqual(serie["series_id"], series_id)
         self.assertTrue(len(serie["pronosticos"]))
@@ -103,6 +104,7 @@ class TestReadForecasts(TestCase):
             archived=True,
             qualifier="medio"
         )
+        assert "cal_id" in serie
         self.assertEqual(serie["cal_id"], cal_id)
         self.assertEqual(serie["series_id"], series_id)
         self.assertEqual(serie["qualifier"], "medio")
@@ -117,6 +119,7 @@ class TestReadForecasts(TestCase):
             qualifier = "superior"
         )
         self.assertEqual(serie_superior["qualifier"], "superior")
+        assert "cal_id" in serie_superior
         self.assertEqual(serie_superior["cal_id"], cal_id)
         self.assertEqual(serie_superior["series_id"], series_id)
         self.assertTrue(len(serie_superior["pronosticos"]))
@@ -126,6 +129,7 @@ class TestReadForecasts(TestCase):
             qualifier = "inferior"
         )
         self.assertEqual(serie_inferior["qualifier"], "inferior")
+        assert "cal_id" in serie_inferior
         self.assertEqual(serie_inferior["cal_id"], cal_id)
         self.assertEqual(serie_inferior["series_id"], series_id)
         self.assertEqual(len(serie_inferior["pronosticos"]), len(serie_superior["pronosticos"]))
@@ -143,6 +147,7 @@ class TestReadForecasts(TestCase):
             estacion_id = estacion_id,
             var_id = var_id
         )
+        assert "cal_id" in serie
         self.assertEqual(serie["cal_id"], cal_id)
         self.assertEqual(serie["series_id"], series_id)
         self.assertTrue(len(serie["pronosticos"]))    

@@ -1,4 +1,5 @@
-from typing import Literal, Union, List, TypedDict, Tuple, Dict, Any
+from typing import Literal, Union, List, TypedDict, Tuple, Dict, Any, Optional
+from datetime import datetime
 
 Position = Union[Tuple[float, float],Tuple[float, float, float]]
 
@@ -46,4 +47,18 @@ class FeatureCollection(TypedDict):
 
 GeoJSON = Union[FeatureCollection, Feature]
 
+
+class TVPAllowNone(TypedDict):
+    """
+    Parameters:
+    -----------
+    timestart : datetime
+    
+    valor : float
+
+    series_id : int = None
+    """
+    timestart : datetime
+    valor : Optional[float]
+    series_id : Optional[int]
 

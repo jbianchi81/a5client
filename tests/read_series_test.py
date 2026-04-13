@@ -15,6 +15,7 @@ class TestReadSeries(TestCase):
         series = client.readSeries(var_id=2,estacion_id=29)
         self.assertTrue(isinstance(series, dict))
         self.assertTrue(isinstance(series["rows"],list))
+        assert len(series["rows"])
         self.assertTrue(isinstance(series["rows"][0],dict))
 
     def test_partial_intersect(self):

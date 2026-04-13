@@ -44,6 +44,10 @@ class ObsTuple(TypedDict):
     timestart : datetime
     valor : float
 
+class TVPPronoWithMetadata(TVPProno):
+    cor_id : int
+    forecast_date : datetime
+
 def validate(
     instance : dict,
     classname : str
@@ -71,10 +75,10 @@ def is_series_table(x: str) -> TypeGuard[SeriesTable]:
     return x in {"series", "series_areal", "series_rast"}
 
 @overload
-def checkInt(data, optional : Literal[True], name : str="key") -> Optional[int]: ...
+def checkInt(data, optional : Literal[True], name : str="key", default : Optional[int] = None) -> Optional[int]: ...
 @overload
-def checkInt(data, optional : Literal[False]=False, name : str="key") -> int: ...
-def checkInt(data, optional : bool=False, name : str="key") -> Optional[int]:
+def checkInt(data, optional : Literal[False]=False, name : str="key", default : Optional[int] = None) -> int: ...
+def checkInt(data, optional : bool=False, name : str="key", default : Optional[int] = None) -> Optional[int]:
     if data is not None:
         if not isinstance(data, int):
             raise ValueError("Invalid int for %s" % name)
@@ -82,8 +86,10 @@ def checkInt(data, optional : bool=False, name : str="key") -> Optional[int]:
     else:
         if optional:
             return None
+        elif default is not None:
+            return default
         else:
-            raise ValueError("Invalid int for %s" % name)
+            raise ValueError("Missing int value for key %s with no default" % name)
 
 @overload
 def checkFloat(data, optional : Literal[True], name : str="key") -> Optional[float]: ...
@@ -106,10 +112,10 @@ def checkFloat(data, optional : bool=False, name : str="key") -> Optional[float]
 
 
 @overload
-def checkStr(data, optional : Literal[True], name : str="key") -> Optional[str]: ...
+def checkStr(data, optional : Literal[True], name : str="key", default : Optional[str] = None) -> Optional[str]: ...
 @overload
-def checkStr(data, optional : Literal[False]=False, name : str="key") -> str: ...
-def checkStr(data, optional : bool=False, name : str="key") -> Optional[str]:
+def checkStr(data, optional : Literal[False]=False, name : str="key", default : Optional[str] = None) -> str: ...
+def checkStr(data, optional : bool=False, name : str="key", default : Optional[str] = None) -> Optional[str]:
     if data is not None:
         if not isinstance(data, str):
             raise ValueError("Invalid str for %s" % name)
@@ -117,8 +123,10 @@ def checkStr(data, optional : bool=False, name : str="key") -> Optional[str]:
     else:
         if optional:
             return None
+        elif default is not None:
+            return default
         else:
-            raise ValueError("Invalid str for %s" % name)
+            raise ValueError("Missing str valuse for key %s with no default" % name)
 
 @overload
 def parseDatetime(data, optional : Literal[True], name : str="key") -> Optional[datetime]: ...
@@ -152,14 +160,14 @@ def parseTVPProno(data) -> TVPProno:
         "qualifier": qualifier
     }
 
-def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime) -> SeriesPronoDict:
+def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime, cor_id : Optional[int]=None) -> SeriesPronoDict:
     if not isinstance(data, dict):
         raise ValueError("invalid serie prono")
-    series_table = checkStr(data.get("series_table"))
+    series_table = checkStr(data.get("series_table"), default="series")
     if not is_series_table(series_table):
         raise ValueError("Invalid series_table")
     series_id = checkInt(data.get("series_id"), name="series_id")
-    cor_id = checkInt(data.get("cor_id"), name='cor_id')
+    cor_id = checkInt(data.get("cor_id"), name='cor_id', default = cor_id)
     pronosticos_ = data.get("pronosticos")
     if not isinstance(pronosticos_, list):
         raise ValueError("Invalid pronosticos")
@@ -167,6 +175,7 @@ def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime) -> Serie
     var_id = checkInt(data.get("var_id"), optional=True, name="var_id")
     begin_date = parseDatetime(data.get("begin_date"),optional=True)
     end_date  = parseDatetime(data.get("end_date"),optional=True)
+    qualifier = checkStr(data.get("qualifier"), optional=True, name="qualifier")
     qualifiers_ = data.get("qualifiers")
     qualifiers : Optional[List[str]]
     if qualifiers_ is not None:
@@ -191,7 +200,7 @@ def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime) -> Serie
         "var_id": var_id,
         "begin_date": begin_date,
         "end_date": end_date,
-        "qualifier": None,
+        "qualifier": qualifier,
         "qualifiers": qualifiers,
         "count": count,
         "estacion_id": estacion_id
@@ -200,8 +209,11 @@ def parseSerieProno(data: dict, cal_id : int, forecast_date : datetime) -> Serie
 def parseCorrida(data: dict) -> CorridaDict:
     id_ = data.get("id")
     if not isinstance(id_, int):
-        raise ValueError("invalid id")
+        id_ = data.get("cor_id")
+        if not isinstance (id_, int):
+            raise ValueError("invalid id")
     id : int = id_
+    cal_id = checkInt(data.get("cal_id"), optional=False, name="cal_id")
     fd = data.get("forecast_date")
     if not isinstance(fd, str):
         raise ValueError("invalid forecast_date")
@@ -211,13 +223,17 @@ def parseCorrida(data: dict) -> CorridaDict:
     forecast_date : datetime = fd_
     series_ = data.get("series")
     if not isinstance(series_, list):
-        raise ValueError("Invalid series")
+        if series_ is None:
+            series_ = []
+        else:
+            raise ValueError(f"Invalid series. Expected list, got {type(series_)}")
     series = series_
     series_parsed = []
     for serie_ in series:
-        serie = parseSerieProno(serie_, cal_id=id, forecast_date=forecast_date)
+        serie = parseSerieProno(serie_, cal_id=cal_id, forecast_date=forecast_date, cor_id=id)
         series_parsed.append(serie)
     return {
+        "cal_id": cal_id,
         "id": id,
         "forecast_date": forecast_date,
         "series": series_parsed
@@ -982,7 +998,8 @@ class Crud():
         try:
             data = parseCorrida(json_response)
         except ValueError as e:
-            raise ValueError(f"Invalid data returned from server: {e}")
+            logging.error(f"Invalid data returned from server: {e}")
+            raise e
         if "series" not in data:
             if series_id is None:
                 raise FileNotFoundError("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
@@ -1005,7 +1022,7 @@ class Crud():
                 qualifiers.append(member["qualifier"])
             return {
                 "forecast_date": data["forecast_date"],
-                "cal_id": data["id"],
+                "cal_id": data["cal_id"],
                 "cor_id": data["id"] if "id" in data else data["cor_id"],
                 "series_id": data["series"][0]["series_id"],
                 "tipo": getSeriesTipo(data["series"][0]["series_table"]),
@@ -1018,7 +1035,7 @@ class Crud():
             logging.warning("Pronosticos from series %i from cal_id %i not found" % (series_id,cal_id))
             return {
                 "forecast_date": data["forecast_date"],
-                "cal_id": data["id"],
+                "cal_id": data["cal_id"],
                 "cor_id": data["id"] if "id" in data else data["cor_id"],
                 "series_id": data["series"][0]["series_id"],
                 "tipo": getSeriesTipo(data["series"][0]["series_table"]),
@@ -1030,7 +1047,7 @@ class Crud():
             logging.warning("Pronosticos from series %i from cal_id %i is empty" % (series_id,cal_id))
             return {
                 "forecast_date": data["forecast_date"],
-                "cal_id": data["id"],
+                "cal_id": data["cal_id"],
                 "cor_id": data["id"] if "id" in data else data["cor_id"],
                 "series_id": data["series"][0]["series_id"],
                 "tipo": getSeriesTipo(data["series"][0]["series_table"]),
@@ -1041,7 +1058,7 @@ class Crud():
         # data["series"][0]["pronosticos"] = [ observacionTupleToDict(x) for x in data["series"][0]["pronosticos"]] # "series_id": series_id, "timeend": x[1] "qualifier":x[3]
         return {
             "forecast_date": data["forecast_date"],
-            "cal_id": data["id"],
+            "cal_id": data["cal_id"],
             "cor_id": data["id"] if "id" in data else data["cor_id"],
             "series_id": data["series"][0]["series_id"],
             "qualifier": data["series"][0]["qualifier"] if "qualifier" in data["series"][0] else None,
@@ -1079,7 +1096,18 @@ class Crud():
         )
         if response.status_code != 200:
             raise Exception("request failed: %s" % response.text)
-        return response.json()
+        data = response.json()
+        if type(data) != list:
+            raise Exception(f"Invalid server response: a list was expected, got {type(data)}")
+        corridas : List[CorridaDict]= []
+        for c in data:
+            try:
+                corridas.append(parseCorrida(c))
+            except ValueError as e:
+                logging.error(f"Invalid data returned from server: {e}")
+                raise e
+
+        return corridas
 
     @overload
     def readSeriePronoConcat(
@@ -1126,19 +1154,19 @@ class Crud():
             group_by_qualifier = True,
             tipo = tipo)
         # logging.debug('Cantidad total de corridas: ',len(corridas))
-        qualifiers = {}
+        qualifiers : Dict[str, Dict[datetime,TVPPronoWithMetadata]]= {}
         if not len(corridas):
             raise FileNotFoundError("Runs not found for the specified filters")
         last_forecast_date = corridas[len(corridas)-1]["forecast_date"]
         for corrida in sorted(corridas, key = lambda c: c["forecast_date"]):
             last_forecast_date = corrida["forecast_date"]
             for serie in corrida["series"]:
-                qualifier = serie["qualifier"] if "qualifier" in serie else "no_qualifier"
+                qualifier = serie["qualifier"] if "qualifier" in serie and serie["qualifier"] is not None else "no_qualifier"
                 if qualifier not in qualifiers:
                     qualifiers[qualifier] = {}
                 for pronostico in serie["pronosticos"]:
                     ts = pronostico["timestart"]
-                    prono = {
+                    prono : TVPPronoWithMetadata = {
                         **pronostico,
                         "cor_id": corrida["id"] if "id" in corrida else corrida["cor_id"],
                         "forecast_date": corrida["forecast_date"]
