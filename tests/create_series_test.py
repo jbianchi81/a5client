@@ -7,7 +7,7 @@ from random import random
 class TestCreateSeries(TestCase):
     def test_success(self):
         valor = int(random() * 10000) * 0.01
-        client = Crud("http://localhost:3005","my_token")
+        client = Crud("http://localhost:3005","token_3") # el usuario debe ser admin con acceso de escritura a la red 21 'estaciones_virtuales'
         series = client.createSeries(
             [
                 {

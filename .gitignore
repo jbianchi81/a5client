@@ -9,6 +9,8 @@ pyvenv.cfg
 a5client.egg-info
 a5_client.egg-info
 src/a5client/__pycache__
+src/a5client/descriptors/__pycache__
+src/a5client/util_types/__pycache__
 tests/__pycache__
 dist
 .vscode

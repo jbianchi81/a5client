@@ -1,9 +1,9 @@
 from jsonschema import validate as json_validate
 import requests
 import pandas
-from a5_client_utils import tryParseAndLocalizeDate
-from a5_client_utils.descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
-from a5_client_utils.types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno
+from .util import tryParseAndLocalizeDate
+from .descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
+from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno
 import json
 import os
 from datetime import datetime, timedelta
@@ -1235,7 +1235,7 @@ def observacionesDataFrameToList(
         raise ValueError("Missing series_id: 'series_id' argument not passed and column 'series_id' not present in dataframe") 
     if data.index.dtype.name != 'datetime64[ns, America/Argentina/Buenos_Aires]':
         if "timestart" in data.columns:
-            data.index = data["timestart"].map(tryParseAndLocalizeDate)
+            data.index = pandas.DatetimeIndex(data["timestart"]).map(tryParseAndLocalizeDate)
         else:
             data.index = data.index.map(tryParseAndLocalizeDate)
     # raise Exception("index must be of type datetime64[ns, America/Argentina/Buenos_Aires]'")
@@ -1285,7 +1285,7 @@ def observacionesListToDataFrame(
         raise Exception("empty list")
     df : pandas.DataFrame = pandas.DataFrame(data)
     df["valor"] = df["valor"].astype(float)
-    df.index = df["timestart"].apply(tryParseAndLocalizeDate)
+    df.index = pandas.DatetimeIndex(df["timestart"].apply(tryParseAndLocalizeDate))
     df.sort_index(inplace=True)
     if tag is not None:
         df["tag"] = tag
@@ -1313,7 +1313,7 @@ def createEmptyObsDataFrame(
         for cname in extra_columns:
             data[cname] = pandas.Series(dtype=extra_columns[cname])
             cnames.append(cname)
-    data.index = data["timestart"]
+    data.index = pandas.DatetimeIndex(data["timestart"])
     return data[cnames]
 
 def getSeriesTipo(series_table : Optional[SeriesTable] = None) -> Literal["puntual","areal","raster"]:

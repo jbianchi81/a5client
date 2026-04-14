@@ -9,7 +9,6 @@ setup(
     author_email='jbianchi@ina.gob.ar',
     url='https://github.com/jbianchi81/a5_client',
     install_requires=[
-        'a5_client_utils',
         'pandas',
         'jsonschema',
         'requests',
