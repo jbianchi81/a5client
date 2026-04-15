@@ -7,23 +7,7 @@ import pytz
 from pytz.exceptions import NonExistentTimeError
 import logging
 from pandas import DatetimeIndex, date_range, DateOffset
-from .util_types import Dateable
-
-class IntervalDict(TypedDict):
-    day: int
-    second : int
-    microsecond : int
-    minute : int
-    hour : int
-    month: int
-    days: int
-    seconds : int
-    microseconds : int
-    minutes : int
-    hours : int
-    weeks : int
-    months: int
-
+from .util_types import Dateable, IntervalDict
 
 @overload
 def tryParseAndLocalizeDate(
@@ -118,16 +102,12 @@ def createDatetimeSequence(
         timestart = datetime_index.min()
     else:
         timestart = tryParseAndLocalizeDate(timestart)
-    if timestart is None:
-        raise pytz.exceptions.NonExistentTimeError("Nonexistent timestart")
     if timeend is None:
         if datetime_index is None:
             raise Exception("Missing datetime_index or timestart+timeend")
         timeend = datetime_index.max()
     else:
         timeend = tryParseAndLocalizeDate(timeend)
-    if timeend is None:
-        raise pytz.exceptions.NonExistentTimeError("Nonexistent timeend")
     timeInterval = relativedelta(**timeInterval) if isinstance(timeInterval,dict) else timedelta_to_relativedelta(timeInterval) if isinstance(timeInterval,timedelta) else relativedelta(days=timeInterval) if isinstance(timeInterval, int) else timeInterval
     timeOffset = relativedelta(**timeOffset) if isinstance(timeOffset,dict) else timeOffset
     timestart = roundDate(timestart,timeInterval,timeOffset,"up")
@@ -171,8 +151,6 @@ def createDatetimeSequence(
 
 def roundDate(date : datetime,timeInterval : relativedelta,timeOffset : Optional[relativedelta]=None, to="up") -> datetime:
     date_0 = tryParseAndLocalizeDate(datetime.combine(date.date(),datetime.min.time()))
-    if date_0 is None:
-        raise NonExistentTimeError("Nonexistent time")
     if timeOffset is not None:
         date_0 = date_0 + timeOffset 
     while date_0 < date:
@@ -184,7 +162,13 @@ def roundDate(date : datetime,timeInterval : relativedelta,timeOffset : Optional
     else:
         return date_0 - timeInterval
 
-def interval2timedelta(interval : Union[dict,float,timedelta]):
+def interval2relativedelta(interval : Union[IntervalDict,float,timedelta, relativedelta]) -> relativedelta:
+    if isinstance(interval, relativedelta):
+        return interval
+    td = interval2timedelta(interval)
+    return timedelta_to_relativedelta(td)
+
+def interval2timedelta(interval : Union[dict,float,timedelta]) -> timedelta:
     """Parses duration dict or number of days into datetime.timedelta object
     
     Parameters:

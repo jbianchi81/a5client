@@ -134,10 +134,7 @@ def parseDatetime(data, optional : Literal[True], name : str="key") -> Optional[
 def parseDatetime(data, optional : Literal[False]=False, name : str="key") -> datetime: ...
 def parseDatetime(data, optional : bool=False, name : str="key") -> Optional[datetime]:
     if data is not None:
-        dt = tryParseAndLocalizeDate(data)
-        if data is None:
-            raise ValueError("Invalid datetime for %s" % name)
-        return dt
+        return tryParseAndLocalizeDate(data)
     else:
         if optional:
             return None
@@ -218,8 +215,6 @@ def parseCorrida(data: dict) -> CorridaDict:
     if not isinstance(fd, str):
         raise ValueError("invalid forecast_date")
     fd_ = tryParseAndLocalizeDate(fd)
-    if fd_ is None:
-        raise ValueError("Invalid forecast_date")
     forecast_date : datetime = fd_
     series_ = data.get("series")
     if not isinstance(series_, list):
@@ -283,8 +278,6 @@ class Observacion():
         """
         # json_validate(params,"Observacion")
         parsed_ts = tryParseAndLocalizeDate(timestart)
-        if parsed_ts is None:
-            raise Exception("Invalid timestart")
         self.timestart = parsed_ts
         self.timeend = tryParseAndLocalizeDate(timeend) if timeend is not None else None
         self.valor = valor
@@ -319,15 +312,15 @@ class Serie():
     @observaciones.setter
     def observaciones(
         self,
-        observaciones : List[dict] = []
+        observaciones : Union[List[Observacion],List[TVP]] = []
     ) -> None:
-        self._observaciones = [o if isinstance(o,Observacion) else Observacion(**o) for o in observaciones]
+        self._observaciones : List[Observacion] = [o if isinstance(o,Observacion) else Observacion(**o) for o in observaciones]
 
     def __init__(
         self,
         id : Optional[int] = None,
         tipo : Optional[str] = None,
-        observaciones : List[dict] = []
+        observaciones : Union[List[Observacion],List[TVP]] = []
         ):
         """
         Args:
