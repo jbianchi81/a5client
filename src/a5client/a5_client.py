@@ -808,7 +808,7 @@ class Crud():
         data : dict,
         cal_id : Optional[int] = None,
         use_proxy : bool = False
-        ) -> dict:
+        ) -> CorridaDict:
         """Create simulation run
 
         Args:
