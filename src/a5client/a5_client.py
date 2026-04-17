@@ -3,7 +3,7 @@ import requests
 import pandas
 from .util import tryParseAndLocalizeDate
 from .descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
-from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno
+from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, CorridaDictNoId, TVPdateable
 import json
 import os
 from datetime import datetime, timedelta
@@ -312,7 +312,7 @@ class Serie():
     @observaciones.setter
     def observaciones(
         self,
-        observaciones : Union[List[Observacion],List[TVP]] = []
+        observaciones : Union[List[Observacion],List[TVPdateable]] = []
     ) -> None:
         self._observaciones : List[Observacion] = [o if isinstance(o,Observacion) else Observacion(**o) for o in observaciones]
 
@@ -320,7 +320,7 @@ class Serie():
         self,
         id : Optional[int] = None,
         tipo : Optional[str] = None,
-        observaciones : Union[List[Observacion],List[TVP]] = []
+        observaciones : Union[List[Observacion],List[TVPdateable]] = []
         ):
         """
         Args:
@@ -742,7 +742,7 @@ class Crud():
         tipo : str = "puntual", 
         timeSupport : Optional[timedelta] = None,
         use_proxy : bool = False
-        ) -> list:
+        ) -> List[TVP]:
         """Create observations
 
         Args:
@@ -805,7 +805,7 @@ class Crud():
 
     def createCorrida(
         self,
-        data : dict,
+        data : CorridaDictNoId,
         cal_id : Optional[int] = None,
         use_proxy : bool = False
         ) -> CorridaDict:

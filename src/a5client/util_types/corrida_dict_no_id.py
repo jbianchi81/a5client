@@ -1,18 +1,20 @@
 from typing import TypedDict, List, Optional, NotRequired
 from .series_prono_dict import SeriesPronoDict
-from .corrida_dict_no_id import CorridaDictNoId
 from datetime import datetime
 
-class CorridaDict(CorridaDictNoId):
+class CorridaDictNoId(TypedDict):
     """
     Parameters:
     -----------
     cal_id : int
     
-    id : int
+    id : Optional[int]
 
     forecast_date : datetime
     
     series: List[SeriesPronoDict]
     """
-    id : int
+    cal_id : int
+    id : NotRequired[Optional[int]]
+    forecast_date : datetime
+    series: List[SeriesPronoDict]
