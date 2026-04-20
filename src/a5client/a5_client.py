@@ -15,6 +15,7 @@ from typing import List, Union, Literal, Optional, overload, cast, Dict, Any, Tu
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
 from .geojson_type_check import is_geojson
+from .util_types import Dateable
 
 logging.basicConfig(
     filename = os.path.join(
@@ -260,9 +261,9 @@ class Observacion():
 
     def __init__(
         self,
-        timestart : Union[datetime, str],
+        timestart : Dateable,
         valor : float,
-        timeend : Optional[Union[datetime,str]] = None,
+        timeend : Optional[Dateable] = None,
         series_id : Optional[int] = None,
         tipo : str = "puntual",
         tag : Optional[str] = None
@@ -312,7 +313,7 @@ class Serie():
     @observaciones.setter
     def observaciones(
         self,
-        observaciones : Union[List[Observacion],List[TVPdateable]] = []
+        observaciones : Union[List[Observacion],List[TVPdateable],List[TVP]] = []
     ) -> None:
         self._observaciones : List[Observacion] = [o if isinstance(o,Observacion) else Observacion(**o) for o in observaciones]
 
@@ -320,7 +321,7 @@ class Serie():
         self,
         id : Optional[int] = None,
         tipo : Optional[str] = None,
-        observaciones : Union[List[Observacion],List[TVPdateable]] = []
+        observaciones : Union[List[Observacion],List[TVPdateable],List[TVP]] = []
         ):
         """
         Args:
