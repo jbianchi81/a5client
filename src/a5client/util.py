@@ -7,7 +7,7 @@ import pytz
 from pytz.exceptions import NonExistentTimeError
 import logging
 from pandas import DatetimeIndex, date_range, DateOffset
-from .util_types import Dateable, IntervalDict
+from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable
 
 @overload
 def tryParseAndLocalizeDate(
@@ -162,13 +162,13 @@ def roundDate(date : datetime,timeInterval : relativedelta,timeOffset : Optional
     else:
         return date_0 - timeInterval
 
-def interval2relativedelta(interval : Union[IntervalDict,float,timedelta, relativedelta]) -> relativedelta:
+def interval2relativedelta(interval : Intervaleable) -> relativedelta:
     if isinstance(interval, relativedelta):
         return interval
     td = interval2timedelta(interval)
     return timedelta_to_relativedelta(td)
 
-def interval2timedelta(interval : Union[dict,float,timedelta]) -> timedelta:
+def interval2timedelta(interval : Intervaleable) -> timedelta:
     """Parses duration dict or number of days into datetime.timedelta object
     
     Parameters:
@@ -195,6 +195,8 @@ def interval2timedelta(interval : Union[dict,float,timedelta]) -> timedelta:
     """
     if isinstance(interval,timedelta):
         return interval
+    if isinstance(interval, relativedelta):
+        return relativedelta_to_timedelta(interval)
     if isinstance(interval,(float,int)):
         return timedelta(days=interval)
     days = 0
@@ -205,18 +207,30 @@ def interval2timedelta(interval : Union[dict,float,timedelta]) -> timedelta:
     hours = 0
     weeks = 0
     for k in interval:
-        if k == "milliseconds" or k == "millisecond":
-            milliseconds = interval[k]
-        elif k == "seconds" or k == "second":
-            seconds = interval[k]
-        elif k == "minutes" or k == "minute":
-            minutes = interval[k]
-        elif k == "hours" or k == "hour":
-            hours = interval[k]
-        elif k == "days" or k == "day":
-            days = interval[k]
-        elif k == "weeks" or k == "week":
-            weeks = interval[k] * 86400 * 7
+        if k in ("milliseconds","millisecond"):
+            v = interval.get(k)
+            if v is not None:
+                milliseconds = v
+        elif k in ("seconds","second"):
+            v = interval.get(k)
+            if v is not None:
+                seconds = v
+        elif k in ("minutes","minute"):
+            v = interval.get(k)
+            if v is not None:
+                minutes = v
+        elif k in ("hours","hour"):
+            v = interval.get(k)
+            if v is not None:
+                hours = v
+        elif k in ("days","day"):
+            v = interval.get(k)
+            if v is not None:
+                days = v
+        elif k in ("weeks","week"):
+            v = interval.get(k)
+            if v is not None:
+                weeks = v * 86400 * 7
     return timedelta(days=days, seconds=seconds, microseconds=microseconds, milliseconds=milliseconds, minutes=minutes, hours=hours, weeks=weeks)
 
 def timedelta_to_relativedelta(td: timedelta) -> relativedelta:
@@ -270,3 +284,64 @@ def relativedelta_to_freq(rd: relativedelta) -> str:
     if rd.seconds:
         return f"{rd.seconds}S"
     raise ValueError("Unsupported relativedelta")
+
+
+@overload
+def serieObsToProno(
+        serie : SeriesDict, 
+        serializable: Literal[True]=True
+        ) -> SeriesPronoSerializableDict: ...
+@overload
+def serieObsToProno(
+        serie : SeriesDict, 
+        serializable: Literal[False],
+        ) -> SeriesPronoDict: ...
+def serieObsToProno(
+        serie : SeriesDict, 
+        serializable: bool=True
+        ) -> Union[SeriesPronoDict, SeriesPronoSerializableDict]:
+    if serializable:
+        s : SeriesPronoSerializableDict =  {
+            "series_id" : serie["series_id"],
+            "series_table" : serie["series_table"],
+            "pronosticos": [ tvpToProno(tvp) for tvp in serie["observaciones"]],
+            "qualifier": None
+        }
+        return s
+    else:
+        s_ : SeriesPronoDict =  {
+            "series_id" : serie["series_id"],
+            "series_table" : serie["series_table"],
+            "pronosticos": [tvpToProno(tvp, False) for tvp in serie["observaciones"]],
+            "qualifier": None
+        }
+        return s_
+
+@overload
+def tvpToProno(
+        tvp : Union[TVP, TVPProno], 
+        serializable : Literal[True]=True
+        ) -> TVPPronoSerializable: ...
+@overload
+def tvpToProno(
+        tvp : Union[TVP, TVPProno], 
+        serializable : Literal[False],
+        ) -> TVPProno: ...
+def tvpToProno(
+        tvp : Union[TVP, TVPProno], 
+        serializable : bool=True
+        ) -> Union[TVPProno,TVPPronoSerializable]:
+    if serializable:
+        return {
+            "timestart": tvp["timestart"].isoformat(),
+            "timeend": tvp["timeend"].isoformat() if "timeend" in tvp and tvp["timeend"] is not None else None, 
+            "valor": tvp["valor"],
+            "series_id": tvp["series_id"] if "series_id" in tvp else None 
+        }
+    else:
+        return {
+            "timestart": tvp["timestart"],
+            "timeend": tvp["timeend"] if "timeend" in tvp and tvp["timeend"] is not None else None, 
+            "valor": tvp["valor"],
+            "series_id": tvp["series_id"] if "series_id" in tvp else None 
+        }

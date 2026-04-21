@@ -3,7 +3,7 @@ import requests
 import pandas
 from .util import tryParseAndLocalizeDate
 from .descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
-from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, CorridaDictNoId, TVPdateable
+from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, TVPdateable, CorridaNoIdSerializableDict
 import json
 import os
 from datetime import datetime, timedelta
@@ -310,12 +310,26 @@ class Serie():
     def observaciones(self) -> List[Observacion]:
         """Observations"""
         return self._observaciones
+
     @observaciones.setter
     def observaciones(
         self,
         observaciones : Union[List[Observacion],List[TVPdateable],List[TVP]] = []
     ) -> None:
-        self._observaciones : List[Observacion] = [o if isinstance(o,Observacion) else Observacion(**o) for o in observaciones]
+        result : List[Observacion] = []
+        for  o in observaciones:
+            if isinstance(o,Observacion):
+                result.append(o)
+            else:
+                result.append(Observacion(
+                    timestart = o["timestart"],
+                    valor = o["valor"],
+                    timeend = o["timeend"] if "timeend" in o else None,
+                    series_id = o["series_id"] if "series_id" in o else None,
+                    tipo = o["tipo"] if "tipo" in o else "puntual",
+                    tag = o["tag"] if "tag" in o else None
+                ))
+        self._observaciones = result
 
     def __init__(
         self,
@@ -806,7 +820,7 @@ class Crud():
 
     def createCorrida(
         self,
-        data : CorridaDictNoId,
+        data : CorridaNoIdSerializableDict,
         cal_id : Optional[int] = None,
         use_proxy : bool = False
         ) -> CorridaDict:
@@ -824,7 +838,7 @@ class Crud():
         Returns:
             dict: created simulation run
         """
-        validate(data,"Corrida")
+        validate(cast(dict,data),"Corrida")
         cal_id = cal_id if cal_id is not None else data["cal_id"] if "cal_id" in data else None
         if cal_id is None:
             raise Exception("Missing parameter cal_id")

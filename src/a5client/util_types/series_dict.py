@@ -1,4 +1,4 @@
-from typing import TypedDict, List
+from typing import TypedDict, List, Literal
 from .tvp import TVP
 
 class SeriesDict(TypedDict):
@@ -12,5 +12,5 @@ class SeriesDict(TypedDict):
     observaciones: List[TVP]
     """
     series_id : int
-    series_table : str
+    series_table : Literal["series","series_areal","series_rast"]
     observaciones: List[TVP]

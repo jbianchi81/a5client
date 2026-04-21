@@ -11,5 +11,8 @@ from .dateable import Dateable
 from .interval_dict import IntervalDict
 from .intervaleable import Intervaleable
 from .corrida_dict_no_id import CorridaDictNoId
+from .corrida_no_id_serializable_dict import CorridaNoIdSerializableDict
+from .series_prono_serializable_dict import SeriesPronoSerializableDict
+from .tvp_prono_serializable import TVPPronoSerializable
 
-__all__ = ['ApiConfigDict','CorridaDict','SeriesDict','TVP','SeriesPronoDict','TypedList','SeriesPronoGroupedByQualifierDict','TVPProno','Dateable','IntervalDict','Intervaleable','CorridaDictNoId','TVPdateable']
+__all__ = ['ApiConfigDict','CorridaDict','SeriesDict','TVP','SeriesPronoDict','TypedList','SeriesPronoGroupedByQualifierDict','TVPProno','Dateable','IntervalDict','Intervaleable','CorridaDictNoId','TVPdateable','CorridaNoIdSerializableDict','SeriesPronoSerializableDict','TVPPronoSerializable']
