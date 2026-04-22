@@ -1,7 +1,7 @@
 from jsonschema import validate as json_validate
 import requests
 import pandas
-from .util import tryParseAndLocalizeDate
+from .util import tryParseAndLocalizeDate, getSeriesTable
 from .descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
 from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, TVPdateable, CorridaNoIdSerializableDict
 import json
@@ -15,7 +15,7 @@ from typing import List, Union, Literal, Optional, overload, cast, Dict, Any, Tu
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
 from .geojson_type_check import is_geojson
-from .util_types import Dateable
+from .util_types import Dateable, A5VariableDict
 
 logging.basicConfig(
     filename = os.path.join(
@@ -857,7 +857,7 @@ class Crud():
         self,
         var_id : int,
         use_proxy : bool = False
-        ) -> dict:
+        ) -> A5VariableDict:
         """Retrieve variable
 
         Args:
@@ -895,7 +895,7 @@ class Crud():
         estacion_id : Optional[int] = None,
         var_id : Optional[int] = None,
         archived : bool = False
-        ) -> SeriesPronoDict:
+        ) -> SeriesPronoGroupedByQualifierDict:
         """
         Reads prono serie from a5 API
         if forecast_date is not None, cor_id is overwritten by first corridas match
@@ -1008,16 +1008,21 @@ class Crud():
         except ValueError as e:
             logging.error(f"Invalid data returned from server: {e}")
             raise e
-        if "series" not in data:
+        if "series" not in data or not len(data["series"]):
             if series_id is None:
-                raise FileNotFoundError("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
+                logging.warning("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
             else: 
-                raise FileNotFoundError("Series %i from cal_id %i" % (series_id,cal_id))
-        if not len(data["series"]):
-            if series_id is None:
-                raise FileNotFoundError("Series with cal_id %i, var_id %i, estacion_id %i" % (cal_id, var_id, estacion_id))
-            else: 
-                raise FileNotFoundError("Series %i from cal_id %i" % (series_id,cal_id))
+                logging.warning("Series %i from cal_id %i" % (series_id,cal_id))
+            return {
+                "forecast_date": data["forecast_date"],
+                "cal_id": data["cal_id"],
+                "cor_id": data["id"] if "id" in data else data["cor_id"],
+                "series_id": series_id,
+                "tipo": tipo,
+                "qualifier": qualifier,
+                "series_table": getSeriesTable(tipo),
+                "pronosticos": []
+            }
         
         if qualifier is not None and qualifier == 'all':
             pronosticos = []

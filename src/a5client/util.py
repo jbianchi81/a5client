@@ -7,7 +7,8 @@ import pytz
 from pytz.exceptions import NonExistentTimeError
 import logging
 from pandas import DatetimeIndex, date_range, DateOffset
-from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable
+from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable, VariableDict, A5IntervalDict, A5VariableDict
+
 
 @overload
 def tryParseAndLocalizeDate(
@@ -162,9 +163,33 @@ def roundDate(date : datetime,timeInterval : relativedelta,timeOffset : Optional
     else:
         return date_0 - timeInterval
 
+def dict2relativedelta(interval : IntervalDict) -> relativedelta:
+    return relativedelta(**interval)
+        # years: = 0,
+        # months: int = 0,
+        # days: int = 0,
+        # leapdays: int = 0,
+        # weeks: int = 0,
+        # hours: int = 0,
+        # minutes: int = 0,
+        # seconds: int = 0,
+        # microseconds: int = 0,
+        # year: Unknown | None = None,
+        # month: Unknown | None = None,
+        # day: Unknown | None = None,
+        # weekday: Unknown | None = None,
+        # yearday: Unknown | None = None,
+        # nlyearday: Unknown | None = None,
+        # hour: Unknown | None = None,
+        # minute: Unknown | None = None,
+        # second: Unknown | None = None,
+        # microsecond: Unknown | None = None
+
 def interval2relativedelta(interval : Intervaleable) -> relativedelta:
     if isinstance(interval, relativedelta):
         return interval
+    if isinstance(interval, dict):
+        return dict2relativedelta(interval)
     td = interval2timedelta(interval)
     return timedelta_to_relativedelta(td)
 
@@ -345,3 +370,35 @@ def tvpToProno(
             "valor": tvp["valor"],
             "series_id": tvp["series_id"] if "series_id" in tvp else None 
         }
+
+def parseA5Interval(i : A5IntervalDict) -> relativedelta:
+    return relativedelta(
+        years= i["years"],
+        months= i["months"],
+        minutes=i["minutes"],
+        seconds=i["seconds"],
+        microseconds=i["milliseconds"] * 0.001
+    )
+
+def parseVar(v : A5VariableDict) -> VariableDict:
+    timeSupport = parseA5Interval(v["timeSupport"])
+    def_unit_id = v.get("def_unit_id")
+    def_unit_id = int(def_unit_id) if def_unit_id is not None else None
+    return {
+        "id": v.get("id"),
+        "var": v.get("var"),
+        "nombre": v.get("nombre"),
+        "abrev": v.get("abrev"),
+        "type": v.get("type"),
+        "datatype": v.get("datatype"),
+        "valuetype": v.get("valuetype"),
+        "GeneralCategory": v.get("GeneralCategory"),
+        "VariableName": v.get("VariableName"),
+        "SampleMedium": v.get("SampleMedium"),
+        "def_unit_id": def_unit_id,
+        "timeSupport": timeSupport
+    }
+
+def getSeriesTable(tipo : Optional[str]="puntual") -> Literal["series","series_areal","series_rast"]:
+    """Retrieve series table name (of a5 schema) for this timeseries"""
+    return "series" if tipo is None or tipo == "puntual" else "series_areal" if tipo == "areal" else "series_rast" if tipo == "raster" else "series"
