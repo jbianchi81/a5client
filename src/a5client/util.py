@@ -7,7 +7,7 @@ import pytz
 from pytz.exceptions import NonExistentTimeError
 import logging
 from pandas import DatetimeIndex, date_range, DateOffset
-from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable, VariableDict, A5IntervalDict, A5VariableDict
+from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable, VariableDict, A5IntervalDict, A5VariableDict, SeriesSerializableDict, TVPserializable
 
 
 @overload
@@ -313,16 +313,16 @@ def relativedelta_to_freq(rd: relativedelta) -> str:
 
 @overload
 def serieObsToProno(
-        serie : SeriesDict, 
+        serie : Union[SeriesDict,SeriesSerializableDict], 
         serializable: Literal[True]=True
         ) -> SeriesPronoSerializableDict: ...
 @overload
 def serieObsToProno(
-        serie : SeriesDict, 
+        serie : Union[SeriesDict,SeriesSerializableDict], 
         serializable: Literal[False],
         ) -> SeriesPronoDict: ...
 def serieObsToProno(
-        serie : SeriesDict, 
+        serie : Union[SeriesDict,SeriesSerializableDict], 
         serializable: bool=True
         ) -> Union[SeriesPronoDict, SeriesPronoSerializableDict]:
     if serializable:
@@ -344,46 +344,55 @@ def serieObsToProno(
 
 @overload
 def tvpToProno(
-        tvp : Union[TVP, TVPProno], 
+        tvp : Union[TVP, TVPserializable, TVPProno, TVPPronoSerializable], 
         serializable : Literal[True]=True
         ) -> TVPPronoSerializable: ...
 @overload
 def tvpToProno(
-        tvp : Union[TVP, TVPProno], 
+        tvp : Union[TVP, TVPserializable, TVPProno, TVPPronoSerializable], 
         serializable : Literal[False],
         ) -> TVPProno: ...
 def tvpToProno(
-        tvp : Union[TVP, TVPProno], 
+        tvp : Union[TVP, TVPserializable, TVPProno, TVPPronoSerializable], 
         serializable : bool=True
         ) -> Union[TVPProno,TVPPronoSerializable]:
+    timestart : datetime = tryParseAndLocalizeDate(tvp["timestart"])
+    timeend : Optional[datetime]
+    if "timeend" in tvp:
+        if tvp["timeend"] is not None:
+            timeend = tryParseAndLocalizeDate(tvp["timeend"])
+        else:
+            timeend = None
+    else:
+        timeend = None
     if serializable:
         return {
-            "timestart": tvp["timestart"].isoformat(),
-            "timeend": tvp["timeend"].isoformat() if "timeend" in tvp and tvp["timeend"] is not None else None, 
+            "timestart": timestart.isoformat(),
+            "timeend": timeend.isoformat() if timeend is not None else None, 
             "valor": tvp["valor"],
             "series_id": tvp["series_id"] if "series_id" in tvp else None 
         }
     else:
         return {
-            "timestart": tvp["timestart"],
-            "timeend": tvp["timeend"] if "timeend" in tvp and tvp["timeend"] is not None else None, 
+            "timestart": timestart,
+            "timeend": timeend, 
             "valor": tvp["valor"],
             "series_id": tvp["series_id"] if "series_id" in tvp else None 
         }
 
 def parseA5Interval(i : A5IntervalDict) -> relativedelta:
     return relativedelta(
-        years= i["years"],
-        months= i["months"],
-        minutes=i["minutes"],
-        seconds=i["seconds"],
-        microseconds=i["milliseconds"] * 0.001
+        years= i["years"] if "years" in i else 0,
+        months= i["months"] if "months" in i else 0,
+        minutes=i["minutes"] if "minutes" in i else 0,
+        seconds=i["seconds"] if "seconds" in i else 0,
+        microseconds=int(i["milliseconds"] * 1000) if "milliseconds" in i else 0
     )
 
 def parseVar(v : A5VariableDict) -> VariableDict:
     timeSupport = parseA5Interval(v["timeSupport"])
     def_unit_id = v.get("def_unit_id")
-    def_unit_id = int(def_unit_id) if def_unit_id is not None else None
+    def_unit_id = int(def_unit_id) #  if def_unit_id is not None else None
     return {
         "id": v.get("id"),
         "var": v.get("var"),
