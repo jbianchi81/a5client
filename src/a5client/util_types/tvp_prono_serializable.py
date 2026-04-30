@@ -1,4 +1,5 @@
-from typing import Optional, NotRequired, TypedDict
+from typing import Optional, TypedDict
+from typing_extensions import NotRequired
 
 class TVPPronoSerializable(TypedDict):
     timestart : str

@@ -1,4 +1,5 @@
-from typing import TypedDict, List, Optional, Literal, Union, NotRequired
+from typing import TypedDict, List, Optional, Literal, Union
+from typing_extensions import NotRequired
 from .tvp_prono import TVPProno
 from datetime import datetime
 

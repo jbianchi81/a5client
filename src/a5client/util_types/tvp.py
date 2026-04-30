@@ -1,4 +1,5 @@
-from typing import TypedDict, Optional, NotRequired
+from typing import TypedDict, Optional
+from typing_extensions import NotRequired
 from datetime import datetime
 
 class TVP(TypedDict):

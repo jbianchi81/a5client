@@ -1,4 +1,5 @@
-from typing import TypedDict, List, Optional, Literal, Union, NotRequired
+from typing import TypedDict, List, Optional, Literal, Union
+from typing_extensions import NotRequired
 from .tvp_prono_serializable import TVPPronoSerializable
 from datetime import datetime
 

@@ -1,7 +1,4 @@
-from typing import TypedDict, List, Optional, NotRequired
-from .series_prono_dict import SeriesPronoDict
 from .corrida_dict_no_id import CorridaDictNoId
-from datetime import datetime
 
 class CorridaDict(CorridaDictNoId):
     """
