@@ -1,4 +1,5 @@
-from typing import TypedDict, List, Optional, NotRequired
+from typing import TypedDict, List, Optional
+from typing_extensions import NotRequired
 from .series_prono_serializable_dict import SeriesPronoSerializableDict
 from datetime import datetime
 
