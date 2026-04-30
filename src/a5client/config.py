@@ -2,7 +2,7 @@ import configparser
 import os
 from pathlib import Path
 import platform
-from typing import TypedDict, Optional, Dict, cast
+from typing import TypedDict, Optional, Dict, cast, Union
 import json
 
 class ServerConfigDict(TypedDict):
@@ -57,13 +57,13 @@ defaults = {
 
 config_path = os.path.join(Path.home(),".a5client.ini")
 
-def parse_optional_int(value: str | None) -> Optional[int]:
+def parse_optional_int(value: Union[str, None]) -> Optional[int]:
     if value is None or value.strip() == "":
         return None
     return int(value)
 
 
-def parse_proxy_dict(value: str | None) -> Optional[Dict[str, str]]:
+def parse_proxy_dict(value: Union[str, None]) -> Optional[Dict[str, str]]:
     if value is None or value.strip() == "":
         return None
     # assume JSON in config
