@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "a5_client"
-version = "0.1.19"
+version = "0.1.20"
 description = "a5 api client for python"
 authors = [
     { name = "SSIyAH-INA", email = "jbianchi@ina.gob.ar" },
@@ -22,7 +22,8 @@ dependencies = [
     "jsonschema",
     "requests",
     "datetime",
-    "pyyaml"
+    "pyyaml",
+    "typing-extensions"
 ]
 
 [project.urls]

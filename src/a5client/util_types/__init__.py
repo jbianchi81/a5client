@@ -20,5 +20,6 @@ from .variable_dict import VariableDict
 from .a5_interval_dict import A5IntervalDict
 from .a5_variable_dict import A5VariableDict
 from .series_serializable_dict import SeriesSerializableDict
+from .tvp_list import TVPList
 
-__all__ = ['ApiConfigDict','CorridaDict','SeriesDict','TVP','SeriesPronoDict','TypedList','SeriesPronoGroupedByQualifierDict','TVPProno','Dateable','IntervalDict','Intervaleable','CorridaDictNoId','TVPdateable','CorridaNoIdSerializableDict','SeriesPronoSerializableDict','TVPPronoSerializable','TVPGroupedByQualifier','A5VariableDict','A5IntervalDict','VariableDict','TVPserializable','SeriesSerializableDict']
+__all__ = ['ApiConfigDict','CorridaDict','SeriesDict','TVP','SeriesPronoDict','TypedList','SeriesPronoGroupedByQualifierDict','TVPProno','Dateable','IntervalDict','Intervaleable','CorridaDictNoId','TVPdateable','CorridaNoIdSerializableDict','SeriesPronoSerializableDict','TVPPronoSerializable','TVPGroupedByQualifier','A5VariableDict','A5IntervalDict','VariableDict','TVPserializable','SeriesSerializableDict','TVPList']

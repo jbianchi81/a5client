@@ -11,7 +11,8 @@ from datetime import datetime, timedelta
 import logging
 from .config import config
 log_config = config["log"]
-from typing import List, Union, Literal, Optional, overload, cast, Dict, Any, Tuple, TypedDict, TypeGuard
+from typing import List, Union, Literal, Optional, overload, cast, Dict, Any, Tuple, TypedDict
+from typing_extensions import TypeGuard
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
 from .geojson_type_check import is_geojson
