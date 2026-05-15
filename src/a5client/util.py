@@ -7,6 +7,7 @@ import pytz
 from pytz.exceptions import NonExistentTimeError
 import logging
 from pandas import DatetimeIndex, date_range, DateOffset
+from pandas.tseries.frequencies import to_offset
 from .util_types import Dateable, IntervalDict, SeriesDict, SeriesPronoDict, SeriesPronoSerializableDict, TVP, TVPProno, TVPPronoSerializable, Intervaleable, VariableDict, A5IntervalDict, A5VariableDict, SeriesSerializableDict, TVPserializable
 
 
@@ -190,6 +191,8 @@ def interval2relativedelta(interval : Intervaleable) -> relativedelta:
         return interval
     if isinstance(interval, dict):
         return dict2relativedelta(interval)
+    if isinstance(interval, str):
+        return freq_to_relativedelta(interval)
     td = interval2timedelta(interval)
     return timedelta_to_relativedelta(td)
 
@@ -309,6 +312,49 @@ def relativedelta_to_freq(rd: relativedelta) -> str:
     if rd.seconds:
         return f"{rd.seconds}S"
     raise ValueError("Unsupported relativedelta")
+
+def freq_to_relativedelta(
+    freq: str,
+) -> relativedelta:
+
+    offset = to_offset(freq)
+
+    kwargs = {}
+
+    if hasattr(offset, "n"):
+        n = offset.n
+    else:
+        n = 1
+
+    name = offset.name.upper()
+
+    if name.endswith("Y"):
+        kwargs["years"] = n
+
+    elif name.endswith("M"):
+        kwargs["months"] = n
+
+    elif name.endswith("W"):
+        kwargs["weeks"] = n
+
+    elif name.endswith("D"):
+        kwargs["days"] = n
+
+    elif name.endswith("H"):
+        kwargs["hours"] = n
+
+    elif name.endswith("MIN"):
+        kwargs["minutes"] = n
+
+    elif name.endswith("S"):
+        kwargs["seconds"] = n
+
+    else:
+        raise ValueError(
+            f"Unsupported frequency: {freq}"
+        )
+
+    return relativedelta(**kwargs)
 
 
 @overload
