@@ -16,7 +16,7 @@ from typing_extensions import TypeGuard
 import os
 from .types import Estacion, Area, Escena, GeoJSON, Sitio, Feature
 from .geojson_type_check import is_geojson
-from .util_types import Dateable, A5VariableDict
+from .util_types import Dateable, A5VariableDict, TVPPronoSerializable
 
 logging.basicConfig(
     filename = os.path.join(
@@ -849,6 +849,47 @@ class Crud():
             timeout=(self.timeout_connect,self.timeout_response)
         )
         logging.debug("createCorrida url: %s" % response.url)
+        if response.status_code != 200:
+            raise Exception("request failed: status: %i, message: %s" % (response.status_code, response.text))
+        json_response = response.json()
+        return json_response
+
+    def createPronosticos(
+        self,
+        cor_id : int,
+        data : Union[List[Observacion], List[TVPPronoSerializable]],
+        tipo : Optional[Literal["puntual","areal","raster"]] = "puntual",
+        use_proxy : bool = False
+        ) -> List[TVPPronoSerializable]:
+        """Add simulation points (series_id+time+value) to existing forecast run
+
+        Args:
+            cor_id (int): corrida id (forecast run identifier)
+            data (list): list of time-value dicts
+            tipo (Optional[Literal["puntual","areal","raster"]]) = "puntual"
+            use_proxy (bool, optional): Perform request through proxy. Defaults to False.
+
+        Raises:
+            Exception: if cor_id is missing from args and from data
+            Exception: Request failed if response status code is not 200
+
+        Returns:
+            list: added simulation points
+        """
+        if cor_id is None:
+            raise Exception("Missing parameter cor_id")
+        url = "%s/sim/corridas/%i/pronosticos" % (self.url, cor_id)
+        response = requests.post(
+            url, 
+            json = data, 
+            headers = self.request_headers,
+            proxies = self.proxy_dict if use_proxy else None,
+            timeout = (self.timeout_connect,self.timeout_response),
+            params = {
+                "tipo": tipo
+            }
+        )
+        logging.debug("createPronosticos url: %s" % response.url)
         if response.status_code != 200:
             raise Exception("request failed: status: %i, message: %s" % (response.status_code, response.text))
         json_response = response.json()
