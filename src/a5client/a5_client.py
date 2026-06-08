@@ -857,7 +857,7 @@ class Crud():
     def createPronosticos(
         self,
         cor_id : int,
-        data : Union[List[Observacion], List[TVPPronoSerializable]],
+        data : Union[List[Observacion], List[TVPPronoSerializable], pandas.DataFrame],
         tipo : Optional[Literal["puntual","areal","raster"]] = "puntual",
         use_proxy : bool = False
         ) -> List[TVPPronoSerializable]:
@@ -878,6 +878,8 @@ class Crud():
         """
         if cor_id is None:
             raise Exception("Missing parameter cor_id")
+        if isinstance(data,pandas.DataFrame):
+            data = observacionesDataFrameToList(data) # TO DO
         url = "%s/sim/corridas/%i/pronosticos" % (self.url, cor_id)
         response = requests.post(
             url, 
