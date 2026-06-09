@@ -3,7 +3,7 @@ import requests
 import pandas
 from .util import tryParseAndLocalizeDate, getSeriesTable
 from .descriptors import IntDescriptor, StringDescriptor, DatetimeDescriptor, FloatDescriptor, DictDescriptor
-from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, TVPdateable, CorridaNoIdSerializableDict
+from .util_types import SeriesPronoDict, CorridaDict, SeriesPronoGroupedByQualifierDict, TVP, TVPProno, TVPdateable, CorridaNoIdSerializableDict, TVPserializable
 import json
 import os
 from datetime import datetime, timedelta
@@ -844,7 +844,7 @@ class Crud():
         if cal_id is None:
             raise Exception("Missing parameter cal_id")
         url = "%s/sim/calibrados/%i/corridas" % (self.url, cal_id)
-        response = requests.post(url, json = data, headers = self.request_headers,
+        response = requests.post(url, json = data, headers = self.request_headers,   # type: ignore[arg-type]
             proxies = self.proxy_dict if use_proxy else None,
             timeout=(self.timeout_connect,self.timeout_response)
         )
@@ -859,6 +859,7 @@ class Crud():
         cor_id : int,
         data : Union[List[Observacion], List[TVPPronoSerializable], pandas.DataFrame],
         tipo : Optional[Literal["puntual","areal","raster"]] = "puntual",
+        series_id : Optional[int] = None,
         use_proxy : bool = False
         ) -> List[TVPPronoSerializable]:
         """Add simulation points (series_id+time+value) to existing forecast run
@@ -879,18 +880,28 @@ class Crud():
         if cor_id is None:
             raise Exception("Missing parameter cor_id")
         if isinstance(data,pandas.DataFrame):
-            data = observacionesDataFrameToList(data) # TO DO
+            data_list = observacionesDataFrameToList(data) # TO DO
+        else:
+            data_list = [
+                r.toDict() 
+                if isinstance(r, Observacion)
+                else r
+                for r in data
+            ]
+        if series_id is not None:
+            for r in data_list:
+                r["series_id"] = series_id            
         url = "%s/sim/corridas/%i/pronosticos" % (self.url, cor_id)
         response = requests.post(
             url, 
-            json = data, 
+            json = data_list,   # type: ignore[arg-type]
             headers = self.request_headers,
             proxies = self.proxy_dict if use_proxy else None,
             timeout = (self.timeout_connect,self.timeout_response),
             params = {
                 "tipo": tipo
             }
-        )
+        ) 
         logging.debug("createPronosticos url: %s" % response.url)
         if response.status_code != 200:
             raise Exception("request failed: status: %i, message: %s" % (response.status_code, response.text))
@@ -1269,7 +1280,7 @@ def observacionesDataFrameToList(
     series_id : Union[int,None]=None,
     column : str = "valor",
     timeSupport : Optional[timedelta] = None
-    ) -> List[dict]:
+    ) -> List[TVPserializable]:
     """Convert Observations DataFrame to list of dict
 
     Args:
@@ -1306,7 +1317,7 @@ def observacionesDataFrameToList(
     data["timestart"] = data.index.map(lambda x: x.isoformat()) # strftime('%Y-%m-%dT%H:%M:%SZ') 
     data["valor"] = data[column]
     data = data[["series_id","timestart","timeend","valor"]]
-    return data.to_dict(orient="records")
+    return cast(List[TVPserializable], data.to_dict(orient="records"))
 
 def observacionTupleToDict(x : Union[Tuple[datetime,datetime,float], ObsTuple]) -> ObsTuple:
     if isinstance(x, tuple):

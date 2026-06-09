@@ -1,4 +1,5 @@
 from typing import TypedDict, Optional
+from typing_extensions import NotRequired
 
 class TVPserializable(TypedDict):
     """
@@ -11,5 +12,6 @@ class TVPserializable(TypedDict):
     series_id : int = None
     """
     timestart : str
+    timeend : NotRequired[Optional[str]]
     valor : float
     series_id : Optional[int]
