@@ -528,7 +528,8 @@ class Crud():
             offset : Union[int,None]=None,
             use_proxy : bool = False,
             no_geom : bool = False,
-            format : Literal["json", "geojson"] = "json"
+            format : Literal["json", "geojson"] = "json",
+            additional_params : Optional[Dict[str, Any]] = None
     ) -> Union[dict,List[dict]]:
         params = {
             "unid": area_id or unid or id,
@@ -542,6 +543,9 @@ class Crud():
             "no_geom": no_geom,
             "format": format
         }
+        if additional_params is not None:
+            for k, v in additional_params.items():
+                params[k] = v
         response = requests.get("%s/obs/areal/areas" % (self.url),
             params = params,
             headers = self.request_headers,

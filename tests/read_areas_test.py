@@ -1,5 +1,5 @@
 from unittest import TestCase, main
-
+import json
 from a5client import Crud, client
 
 class TestReadAreas(TestCase):
@@ -30,6 +30,17 @@ class TestReadAreas(TestCase):
             self.assertTrue("coordinates" in feature["geometry"])
             self.assertTrue("type" in feature["geometry"])
             self.assertEqual(feature["geometry"]["type"],"Polygon")
+    
+    def test_additional_params(self):
+        client_ = Crud("https://alerta.ina.gob.ar/a5","my_token")
+        result = client_.readAreas(format="geojson", additional_params={"mostrar": True, "activar": True})
+        assert isinstance(result, dict)
+        self.assertTrue("areas" in result)
+        assert isinstance(result["areas"],list)
+        self.assertTrue(len(result["areas"]) > 0)
+        self.assertEqual(len([f for f in result["features"] if f["properties"]["activar"] == True]), len(result["areas"]))
+        self.assertEqual(len([f for f in result["features"] if f["properties"]["mostrar"] == True]), len(result["areas"]))
+        # json.dump(result, open("data/areas_activas_y_visibles.json","w",encoding="utf-8"), indent=2)
 
 
 if __name__ == '__main__':
