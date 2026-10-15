@@ -1036,7 +1036,7 @@ class Crud():
                 max_date = None
                 cor_id = None
                 for c in corridas:
-                    d = datetime.fromisoformat(c["forecast_date"])
+                    d = datetime.fromisoformat(c["forecast_date"].replace('Z', '+00:00'))
                     max_date = d if max_date is None else d if d > max_date else max_date
                     if d == max_date:
                         cor_id = c["cor_id"] if "cor_id" in c else c["id"]
