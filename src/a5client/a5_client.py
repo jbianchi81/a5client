@@ -1033,7 +1033,14 @@ class Crud():
                 raise Exception("request failed: %s" % corridas_response.text)
             corridas = corridas_response.json()
             if len(corridas):
-                cor_id = corridas[len(corridas)-1]["cor_id"] if "cor_id" in corridas[len(corridas)-1] else corridas[len(corridas)-1]["id"]
+                max_date = None
+                cor_id = None
+                for c in corridas:
+                    d = datetime.fromisoformat(c["forecast_date"])
+                    max_date = d if max_date is None else d if d > max_date else max_date
+                    if d == max_date:
+                        cor_id = c["cor_id"] if "cor_id" in c else c["id"]
+                # cor_id = corridas[len(corridas)-1]["cor_id"] if "cor_id" in corridas[len(corridas)-1] else corridas[len(corridas)-1]["id"]
             else:
                 if series_id is None:
                     raise FileNotFoundError("Forecast run with cal_id %i at forecast_date greater than %s, var_id %i, estacion_id %i not found" % (cal_id, forecast_timestart, var_id, estacion_id))

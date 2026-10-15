@@ -3,8 +3,8 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "a5_client"
-version = "0.1.22"
+name = "a5-client"
+version = "0.1.23"
 description = "a5 api client for python"
 authors = [
     { name = "SSIyAH-INA", email = "jbianchi@ina.gob.ar" },
